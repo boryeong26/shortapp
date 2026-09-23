@@ -18,7 +18,7 @@ const { parseScriptSegments } = require('../lib/scriptSegments');
 const { synthesizeSpeech } = require('../lib/tts');
 const { generateSceneBackgroundImage, WIDTH, HEIGHT } = require('../lib/background');
 const { generateSceneClip } = require('../lib/videoGen');
-const { buildAssSubtitles } = require('../lib/subtitles');
+const { buildAssSubtitles, buildSceneCues } = require('../lib/subtitles');
 
 const BUILD_DIR = path.join(__dirname, '..', 'build');
 const OUTPUT_DIR = path.join(__dirname, '..', 'output');
@@ -200,7 +200,8 @@ async function main() {
     const cutBackgroundVideoPath = await getSceneBackgroundVideo(scene, i, cutName, latest.topic);
 
     const cutAssPath = path.join(BUILD_DIR, `${cutName}.ass`);
-    fs.writeFileSync(cutAssPath, buildAssSubtitles([{ label: scene.label, text: scene.narration, start: 0, duration: scene.duration }]), 'utf8');
+    const sceneCues = buildSceneCues({ label: scene.label, text: scene.narration, start: 0, duration: scene.duration });
+    fs.writeFileSync(cutAssPath, buildAssSubtitles(sceneCues), 'utf8');
 
     const cutVideoPath = path.join(CUTS_DIR, `${cutName}.mp4`);
     muxWithSubtitles(cutBackgroundVideoPath, audioPaths[i], cutAssPath, cutVideoPath);
