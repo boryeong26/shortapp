@@ -1,0 +1,9 @@
+{
+  "name": "shortapp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "쇼츠팩토리 - 과학상식 쇼츠 대본 자동생성 앱",
+  "scripts": {
+    "dev": "vercel dev"
+  }
+}
