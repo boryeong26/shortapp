@@ -199,6 +199,63 @@
     display: none;
   }
 
+  .login-row {
+    display: flex;
+    gap: 10px;
+  }
+
+  .login-row input {
+    flex: 1;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--panel-border);
+    background: #0a0d1a;
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+  }
+
+  .login-row input:focus { border-color: var(--accent); }
+
+  .login-row button, .action-btn {
+    padding: 12px 18px;
+    border-radius: 12px;
+    border: none;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    color: #05060a;
+    background: linear-gradient(120deg, var(--accent-2), var(--accent));
+    white-space: nowrap;
+  }
+
+  .action-btn { width: 100%; margin-top: 12px; }
+  .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .logout-link {
+    color: var(--text-dim);
+    font-size: 12px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    text-decoration: underline;
+    padding: 0;
+  }
+
+  .session-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .status-line {
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-top: 10px;
+    min-height: 18px;
+  }
+
   footer {
     text-align: center;
     color: var(--text-dim);
@@ -222,6 +279,29 @@
       <p>Actions에서 워크플로우를 실행하면 AI가 숏폼 대본을 작성해 이 페이지에 표시합니다.</p>
     </div>
 
+    <div class="card" id="controlCard" style="margin-bottom: 24px;">
+      <div id="loginView">
+        <h2 style="font-size: 16px; margin: 0 0 12px; color: var(--text-dim); font-weight: 600;">관리자 로그인</h2>
+        <div class="login-row">
+          <input type="password" id="passwordInput" placeholder="비밀번호" autocomplete="current-password">
+          <button id="loginBtn">로그인</button>
+        </div>
+        <p class="hint" style="margin-top: 10px;">로그인하면 이 페이지에서 바로 대본/영상 생성을 실행할 수 있습니다. (비로그인 상태에서는 결과 확인만 가능)</p>
+      </div>
+
+      <div id="controlView" style="display: none;">
+        <div class="session-bar">
+          <h2 style="font-size: 16px; margin: 0; color: var(--text-dim); font-weight: 600;">파이프라인 실행</h2>
+          <button class="logout-link" id="logoutBtn">로그아웃</button>
+        </div>
+        <button class="action-btn" id="runScriptBtn">1. 새 대본 생성하기</button>
+        <button class="action-btn" id="runVideoBtn">2. 영상 제작 시작하기 (음성+자막+배경)</button>
+        <div class="status-line" id="statusLine"></div>
+      </div>
+
+      <div class="error-box" id="authErrorBox"></div>
+    </div>
+
     <div class="card">
       <div class="result-header">
         <h2>생성된 대본</h2>
@@ -232,15 +312,180 @@
       <div class="script-box empty" id="scriptBox">불러오는 중...</div>
 
       <a class="generate" id="generateBtn" href="https://github.com/boryeong26/shortapp/actions/workflows/generate-script.yml" target="_blank" rel="noopener">
-        Actions에서 새 대본 생성하기 →
+        Actions 탭에서 수동으로 실행하기 →
       </a>
-      <p class="hint">GitHub Pages는 정적 호스팅이라 이 페이지에서 직접 대본을 생성할 수 없습니다. 위 버튼으로 Actions 탭에 이동해 "Run workflow"를 눌러 새로 생성하세요. 생성이 끝나면 이 페이지를 새로고침하면 결과가 반영됩니다.</p>
+      <p class="hint">위 로그인 후 버튼으로 바로 실행하거나, 이 링크로 Actions 탭에 가서 수동으로 "Run workflow"를 눌러도 됩니다. 생성이 끝나면 새로고침하면 결과가 반영됩니다.</p>
     </div>
   </main>
 
   <footer>쇼츠팩토리 · QUANTA UI</footer>
 
   <script>
+    // TODO: 배포한 Vercel 프로젝트의 URL로 교체하세요 (예: https://shortapp-api.vercel.app)
+    // GitHub Pages와 API 서버가 다른 도메인이라 절대 URL이 필요합니다.
+    const API_BASE_URL = 'https://your-vercel-app.vercel.app';
+
+    const SESSION_KEY = 'shortapp_session_token';
+
+    const loginView = document.getElementById('loginView');
+    const controlView = document.getElementById('controlView');
+    const passwordInput = document.getElementById('passwordInput');
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const authErrorBox = document.getElementById('authErrorBox');
+    const runScriptBtn = document.getElementById('runScriptBtn');
+    const runVideoBtn = document.getElementById('runVideoBtn');
+    const statusLine = document.getElementById('statusLine');
+
+    function getSessionToken() {
+      try { return sessionStorage.getItem(SESSION_KEY); } catch (e) { return null; }
+    }
+
+    function setSessionToken(token) {
+      try { sessionStorage.setItem(SESSION_KEY, token); } catch (e) { /* ignore */ }
+    }
+
+    function clearSessionToken() {
+      try { sessionStorage.removeItem(SESSION_KEY); } catch (e) { /* ignore */ }
+    }
+
+    function showAuthError(message) {
+      authErrorBox.textContent = message;
+      authErrorBox.style.display = message ? 'block' : 'none';
+    }
+
+    function renderAuthState() {
+      const token = getSessionToken();
+      if (token) {
+        loginView.style.display = 'none';
+        controlView.style.display = 'block';
+      } else {
+        loginView.style.display = 'block';
+        controlView.style.display = 'none';
+      }
+    }
+
+    async function login() {
+      const password = passwordInput.value;
+      if (!password) return;
+
+      showAuthError('');
+      loginBtn.disabled = true;
+      loginBtn.textContent = '확인 중...';
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || '로그인에 실패했습니다.');
+
+        setSessionToken(data.token);
+        passwordInput.value = '';
+        renderAuthState();
+      } catch (err) {
+        showAuthError(err.message || '로그인 중 오류가 발생했습니다.');
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = '로그인';
+      }
+    }
+
+    function logout() {
+      clearSessionToken();
+      statusLine.textContent = '';
+      renderAuthState();
+    }
+
+    async function triggerWorkflow(workflowKey, label) {
+      const token = getSessionToken();
+      if (!token) { renderAuthState(); return; }
+
+      runScriptBtn.disabled = true;
+      runVideoBtn.disabled = true;
+      statusLine.textContent = `${label} 실행 요청 중...`;
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/trigger-workflow`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, workflow: workflowKey })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          if (res.status === 401) { clearSessionToken(); renderAuthState(); }
+          throw new Error(data.error || '실행 요청이 실패했습니다.');
+        }
+
+        statusLine.textContent = `${label} 실행됨. 진행 상황 확인 중...`;
+        pollWorkflowStatus(workflowKey, label);
+      } catch (err) {
+        statusLine.textContent = `오류: ${err.message}`;
+        runScriptBtn.disabled = false;
+        runVideoBtn.disabled = false;
+      }
+    }
+
+    async function pollWorkflowStatus(workflowKey, label) {
+      const token = getSessionToken();
+      if (!token) return;
+
+      const maxAttempts = 60; // ~10 minutes at 10s interval
+      let attempts = 0;
+
+      const tick = async () => {
+        attempts += 1;
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/workflow-status?token=${encodeURIComponent(token)}&workflow=${workflowKey}`);
+          const data = await res.json();
+
+          if (!res.ok) {
+            if (res.status === 401) { clearSessionToken(); renderAuthState(); }
+            throw new Error(data.error || '상태 조회 실패');
+          }
+
+          if (data.status === 'completed') {
+            const ok = data.conclusion === 'success';
+            statusLine.textContent = ok
+              ? `${label} 완료! 결과를 보려면 새로고침하세요.`
+              : `${label} 실패 (${data.conclusion}). Actions 탭에서 로그를 확인하세요.`;
+            runScriptBtn.disabled = false;
+            runVideoBtn.disabled = false;
+            if (ok) setTimeout(loadLatestScript, 500);
+            return;
+          }
+
+          statusLine.textContent = `${label} 진행 중... (${data.status || '대기'})`;
+        } catch (err) {
+          statusLine.textContent = `상태 확인 실패: ${err.message}`;
+        }
+
+        if (attempts < maxAttempts) {
+          setTimeout(tick, 10000);
+        } else {
+          statusLine.textContent = `${label} 상태 확인 시간 초과. Actions 탭에서 직접 확인하세요.`;
+          runScriptBtn.disabled = false;
+          runVideoBtn.disabled = false;
+        }
+      };
+
+      // First status check shortly after dispatch, since GitHub takes a
+      // moment to register the queued run.
+      setTimeout(tick, 4000);
+    }
+
+    loginBtn.addEventListener('click', login);
+    passwordInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
+    logoutBtn.addEventListener('click', logout);
+    runScriptBtn.addEventListener('click', () => triggerWorkflow('script', '대본 생성'));
+    runVideoBtn.addEventListener('click', () => triggerWorkflow('video', '영상 제작'));
+
+    renderAuthState();
+
     const scriptBox = document.getElementById('scriptBox');
     const errorBox = document.getElementById('errorBox');
     const copyBtn = document.getElementById('copyBtn');
