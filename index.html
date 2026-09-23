@@ -519,7 +519,7 @@
       <div class="result-header">
         <h2>스토리보드 (컷별 편집)</h2>
       </div>
-      <p class="hint" style="margin-top: 0; margin-bottom: 16px; text-align: left;">컷마다 내레이션과 배경 분위기(비주얼 묘사)를 직접 수정할 수 있습니다. 수정사항을 저장한 뒤, 더 바꿀 게 없으면 아래 "2. 최종 영상 제작하기"를 눌러 완성하세요.</p>
+      <p class="hint" style="margin-top: 0; margin-bottom: 16px; text-align: left;">컷마다 내레이션과 영상 장면 묘사를 직접 수정할 수 있습니다. 영상 장면 묘사는 내레이션 내용을 실제로 화면에 보여주는 장면을 그대로 적어주세요(예: 세포 이야기면 "확대된 인체 세포들이 떠다니는 모습"). 수정사항을 저장한 뒤, 더 바꿀 게 없으면 아래 "2. 최종 영상 제작하기"를 눌러 완성하세요.</p>
       <div id="scenesList"></div>
       <button class="action-btn" id="saveScenesBtn">변경사항 저장</button>
       <div class="status-line" id="scenesSaveStatus"></div>
@@ -904,14 +904,14 @@
 
         const visualLabel = document.createElement('label');
         visualLabel.className = 'visual-label';
-        visualLabel.textContent = '비주얼 묘사 (배경 색감/분위기)';
+        visualLabel.textContent = '영상 장면 묘사 (내레이션 내용을 실제로 보여주는 장면)';
         item.appendChild(visualLabel);
 
         const visualInput = document.createElement('input');
         visualInput.type = 'text';
         visualInput.dataset.field = 'visual';
         visualInput.value = scene.visual || '';
-        visualInput.placeholder = '예: 어두운 우주, 은하수와 별빛';
+        visualInput.placeholder = '예: 확대된 인체 세포들이 3차원 공간에 떠다니는 모습';
         item.appendChild(visualInput);
 
         scenesList.appendChild(item);

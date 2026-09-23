@@ -2,9 +2,11 @@
 //
 // Reads scripts/latest.json (produced by generate-script.js, and
 // editable on the page before this runs via api/save-scenes.js). Each
-// scene has its own narration (for TTS) and a short visual-mood
-// description (used to pick a background color palette). For each scene
-// this renders a fully standalone cut clip — its own background, audio,
+// scene has its own narration (for TTS) and a visual description of
+// what that narration should actually show on screen — used as the
+// Kling AI video-generation prompt (falls back to a keyword-matched
+// color palette if Kling is unavailable). For each scene this renders a
+// fully standalone cut clip — its own background, audio,
 // and burned-in subtitle — to output/cuts/, so cuts can be individually
 // reviewed/re-cut in an external editor (e.g. CapCut). The final
 // output/shorts.mp4 is just those cuts concatenated, so it already
@@ -78,8 +80,8 @@ function muxWithSubtitles(backgroundVideoPath, audioPath, assPath, outputPath) {
 }
 
 function buildKlingPrompt(scene, topic) {
-  const mood = scene.visual || topic || '추상적인 배경';
-  return `${mood} 분위기의 추상적인 배경 영상. 부드럽고 느린 카메라 움직임, 텍스트 없음, 사람 얼굴 클로즈업 없음, 자연스럽게 반복 재생 가능한 루프 영상.`;
+  const description = scene.visual || topic || '추상적인 배경';
+  return `${description}. 부드럽고 느린 카메라 움직임, 자막이나 글자 없음, 사람 얼굴 클로즈업 없음, 자연스럽게 반복 재생 가능한 루프 영상.`;
 }
 
 // Tries Kling AI for a short, on-theme animated clip and loops it with
