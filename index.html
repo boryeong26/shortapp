@@ -321,9 +321,10 @@
   <footer>쇼츠팩토리 · QUANTA UI</footer>
 
   <script>
-    // TODO: 배포한 Vercel 프로젝트의 URL로 교체하세요 (예: https://shortapp-api.vercel.app)
-    // GitHub Pages와 API 서버가 다른 도메인이라 절대 URL이 필요합니다.
-    const API_BASE_URL = 'https://your-vercel-app.vercel.app';
+    // Vercel 배포 도메인. 이 페이지를 Vercel 도메인에서 직접 열면 상대경로(같은
+    // origin)로 호출하고, GitHub Pages 등 다른 도메인에서 열면 이 절대 URL로 호출합니다.
+    const VERCEL_APP_URL = 'https://shortapp-mu.vercel.app';
+    const API_BASE_URL = location.hostname.endsWith('.vercel.app') ? '' : VERCEL_APP_URL;
 
     const SESSION_KEY = 'shortapp_session_token';
 
