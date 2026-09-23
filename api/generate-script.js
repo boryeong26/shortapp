@@ -30,7 +30,7 @@ module.exports = async (req, res) => {
 
   try {
     const result = await generateScript(body || {}, apiKey);
-    res.status(200).json({ script: result.script });
+    res.status(200).json({ script: result.script, scenes: result.scenes });
   } catch (err) {
     console.error('generate-script error:', err);
     const status = err.status ? 502 : 500;

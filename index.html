@@ -222,6 +222,59 @@
 
   .download-btn:hover { background: rgba(51,226,199,0.1); }
 
+  .scene-item {
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+    background: #0a0d1a;
+  }
+
+  .scene-item .scene-label {
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--accent-2);
+    margin-bottom: 8px;
+  }
+
+  .scene-item textarea {
+    width: 100%;
+    min-height: 70px;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--panel-border);
+    background: #05060a;
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+    line-height: 1.5;
+    resize: vertical;
+    margin-bottom: 8px;
+    outline: none;
+  }
+
+  .scene-item textarea:focus { border-color: var(--accent); }
+
+  .scene-item .visual-label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+
+  .scene-item input[type="text"] {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--panel-border);
+    background: #05060a;
+    color: var(--text);
+    font-size: 12px;
+    outline: none;
+  }
+
+  .scene-item input[type="text"]:focus { border-color: var(--accent); }
+
   .error-box {
     margin-top: 16px;
     border: 1px solid rgba(255,92,122,0.4);
@@ -423,6 +476,16 @@
         Actions 탭에서 수동으로 실행하기 →
       </a>
       <p class="hint">위 로그인 후 버튼으로 바로 실행하거나, 이 링크로 Actions 탭에 가서 수동으로 "Run workflow"를 눌러도 됩니다. 생성이 끝나면 새로고침하면 결과가 반영됩니다.</p>
+    </div>
+
+    <div class="card" id="scenesCard" style="margin-top: 24px; display: none;">
+      <div class="result-header">
+        <h2>장면별 편집</h2>
+      </div>
+      <p class="hint" style="margin-top: 0; margin-bottom: 16px; text-align: left;">각 장면의 내레이션과 배경 분위기(비주얼 묘사)를 직접 수정할 수 있습니다. 저장 후 "2. 영상 제작 시작하기"를 누르면 이 내용으로 만들어집니다.</p>
+      <div id="scenesList"></div>
+      <button class="action-btn" id="saveScenesBtn">변경사항 저장</button>
+      <div class="status-line" id="scenesSaveStatus"></div>
     </div>
   </main>
 
@@ -646,6 +709,108 @@
       toggleClampBtn.textContent = isClamped ? '더보기' : '접기';
     });
 
+    const scenesCard = document.getElementById('scenesCard');
+    const scenesList = document.getElementById('scenesList');
+    const saveScenesBtn = document.getElementById('saveScenesBtn');
+    const scenesSaveStatus = document.getElementById('scenesSaveStatus');
+    let currentSceneMeta = null;
+
+    function renderScenes(data) {
+      scenesList.textContent = '';
+
+      if (!Array.isArray(data.scenes) || data.scenes.length === 0) {
+        scenesCard.style.display = 'none';
+        currentSceneMeta = null;
+        return;
+      }
+
+      currentSceneMeta = {
+        topic: data.topic,
+        tone: data.tone,
+        keyword: data.keyword,
+        duration: data.duration,
+        generatedAt: data.generatedAt,
+        labels: data.scenes.map((s) => s.label)
+      };
+
+      data.scenes.forEach((scene) => {
+        const item = document.createElement('div');
+        item.className = 'scene-item';
+
+        const labelEl = document.createElement('div');
+        labelEl.className = 'scene-label';
+        labelEl.textContent = scene.label;
+        item.appendChild(labelEl);
+
+        const textarea = document.createElement('textarea');
+        textarea.dataset.field = 'narration';
+        textarea.value = scene.narration || '';
+        item.appendChild(textarea);
+
+        const visualLabel = document.createElement('label');
+        visualLabel.className = 'visual-label';
+        visualLabel.textContent = '비주얼 묘사 (배경 색감/분위기)';
+        item.appendChild(visualLabel);
+
+        const visualInput = document.createElement('input');
+        visualInput.type = 'text';
+        visualInput.dataset.field = 'visual';
+        visualInput.value = scene.visual || '';
+        visualInput.placeholder = '예: 어두운 우주, 은하수와 별빛';
+        item.appendChild(visualInput);
+
+        scenesList.appendChild(item);
+      });
+
+      scenesCard.style.display = 'block';
+    }
+
+    async function saveScenes() {
+      const token = getSessionToken();
+      if (!token) { renderAuthState(); return; }
+      if (!currentSceneMeta) return;
+
+      const items = scenesList.querySelectorAll('.scene-item');
+      const scenes = Array.from(items).map((item, i) => ({
+        label: currentSceneMeta.labels[i],
+        narration: item.querySelector('textarea').value.trim(),
+        visual: item.querySelector('input[type="text"]').value.trim()
+      }));
+
+      saveScenesBtn.disabled = true;
+      scenesSaveStatus.textContent = '저장 중...';
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/save-scenes`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token,
+            topic: currentSceneMeta.topic,
+            tone: currentSceneMeta.tone,
+            keyword: currentSceneMeta.keyword,
+            duration: currentSceneMeta.duration,
+            generatedAt: currentSceneMeta.generatedAt,
+            scenes
+          })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          if (res.status === 401) { clearSessionToken(); renderAuthState(); }
+          throw new Error(data.error || '저장에 실패했습니다.');
+        }
+
+        scenesSaveStatus.textContent = '저장 완료! "2. 영상 제작 시작하기"를 누르면 이 내용으로 만들어집니다. (GitHub Pages 반영에는 1분 정도 걸릴 수 있어 "생성된 대본" 미리보기는 잠시 후 새로고침해야 갱신됩니다.)';
+      } catch (err) {
+        scenesSaveStatus.textContent = `저장 실패: ${err.message}`;
+      } finally {
+        saveScenesBtn.disabled = false;
+      }
+    }
+
+    saveScenesBtn.addEventListener('click', saveScenes);
+
     async function loadLatestScript() {
       try {
         // Cache-bust so GitHub Pages / browser caching doesn't serve a stale file.
@@ -659,6 +824,7 @@
           scriptBox.classList.remove('clamped');
           scriptBox.textContent = 'Actions에서 워크플로우를 실행하면 여기에 대본이 표시됩니다.';
           toggleClampBtn.style.display = 'none';
+          renderScenes({});
           return;
         }
 
@@ -672,6 +838,7 @@
         scriptBox.textContent = data.script;
         toggleClampBtn.style.display = 'block';
         toggleClampBtn.textContent = '더보기';
+        renderScenes(data);
       } catch (err) {
         errorBox.textContent = `대본을 불러오지 못했습니다: ${err.message}`;
         errorBox.style.display = 'block';
@@ -680,6 +847,7 @@
         scriptBox.classList.remove('clamped');
         scriptBox.textContent = '불러오기 실패';
         toggleClampBtn.style.display = 'none';
+        renderScenes({});
       }
     }
 

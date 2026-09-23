@@ -31,7 +31,8 @@ async function main() {
     tone: result.tone,
     keyword: result.keyword,
     duration: result.duration,
-    script: result.script
+    script: result.script,
+    scenes: result.scenes
   };
 
   const outPath = path.join(__dirname, 'latest.json');
