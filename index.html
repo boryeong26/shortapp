@@ -855,6 +855,11 @@
     const KLING_CLIP_SECONDS = 5; // matches the default in lib/videoGen.js
     const USD_TO_KRW = 1450; // approximate, for display only
 
+    // Korean narration reading pace, for estimating a scene's audio
+    // duration from its character count before TTS has actually run
+    // (used only to size the video-cost estimate below).
+    const KOREAN_CHARS_PER_SECOND = 5.5;
+
     function estimateCost(scenes) {
       const totalChars = scenes.reduce((sum, s) => sum + (s.narration || '').length, 0);
 
@@ -867,12 +872,23 @@
         + scriptOutputTokens * PRICING.claudeOutputPerMTokens) / 1e6;
 
       const ttsCost = (totalChars / 1000) * PRICING.elevenLabsPer1000Chars;
-      const videoCost = scenes.length * KLING_CLIP_SECONDS * PRICING.klingPerSecond;
+
+      // No looping: generate-video.js requests ceil(duration/clipLen)
+      // distinct Kling clips per scene to cover its full length without
+      // repeating, so cost scales with estimated narration length, not a
+      // flat one-clip-per-scene assumption.
+      const videoSeconds = scenes.reduce((sum, s) => {
+        const estimatedDuration = (s.narration || '').length / KOREAN_CHARS_PER_SECOND;
+        const clipCount = Math.max(1, Math.ceil(estimatedDuration / KLING_CLIP_SECONDS));
+        return sum + clipCount * KLING_CLIP_SECONDS;
+      }, 0);
+      const videoCost = videoSeconds * PRICING.klingPerSecond;
 
       return {
         scriptCost,
         ttsCost,
         videoCost,
+        videoSeconds,
         total: scriptCost + ttsCost + videoCost
       };
     }
@@ -901,7 +917,7 @@
       [
         ['대본 생성 (Claude Sonnet 5)', cost.scriptCost],
         [`음성 합성 (ElevenLabs, ${scenes.reduce((s, sc) => s + sc.narration.length, 0)}자)`, cost.ttsCost],
-        [`영상 배경 (Kling AI, 컷 ${scenes.length}개 × ${KLING_CLIP_SECONDS}초)`, cost.videoCost]
+        [`영상 배경 (Kling AI, 반복 없이 약 ${Math.round(cost.videoSeconds)}초 생성)`, cost.videoCost]
       ].forEach(([label, value]) => {
         const line = document.createElement('div');
         line.textContent = `${label}: ${formatUsd(value)}`;
