@@ -30,6 +30,8 @@ jobs:
         env:
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
+          KLING_API_KEY: ${{ secrets.KLING_API_KEY }}
+          KLING_CLIP_DURATION: ${{ secrets.KLING_CLIP_DURATION }}
         run: node scripts/generate-video.js
 
       - name: 결과 mp4 아티팩트 업로드
