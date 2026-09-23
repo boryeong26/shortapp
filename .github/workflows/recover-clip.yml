@@ -1,0 +1,40 @@
+name: 클립 복구 (Kling task id로 재조회)
+
+on:
+  workflow_dispatch:
+    inputs:
+      task_id:
+        description: '복구할 Kling external_task_id'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  recover-clip:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Node.js 설정
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: npm 의존성 설치
+        run: npm install
+
+      - name: 클립 조회 및 다운로드
+        env:
+          KLING_API_KEY: ${{ secrets.KLING_API_KEY }}
+          EXTERNAL_TASK_ID: ${{ inputs.task_id }}
+        run: node scripts/recover-clip.js
+
+      - name: 복구된 클립 아티팩트 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: recovered-clip
+          path: output/recovered-clip.mp4
+          retention-days: 7
