@@ -17,6 +17,7 @@ const { execFileSync } = require('child_process');
 const { parseScriptSegments } = require('../lib/scriptSegments');
 const { synthesizeSpeech } = require('../lib/tts');
 const { generateSceneBackgroundImage, WIDTH, HEIGHT } = require('../lib/background');
+const { generateSceneClip } = require('../lib/videoGen');
 const { buildAssSubtitles } = require('../lib/subtitles');
 
 const BUILD_DIR = path.join(__dirname, '..', 'build');
@@ -74,6 +75,57 @@ function muxWithSubtitles(backgroundVideoPath, audioPath, assPath, outputPath) {
     '-pix_fmt', 'yuv420p',
     outputPath
   ]);
+}
+
+function buildKlingPrompt(scene, topic) {
+  const mood = scene.visual || topic || '추상적인 배경';
+  return `${mood} 분위기의 추상적인 배경 영상. 부드럽고 느린 카메라 움직임, 텍스트 없음, 사람 얼굴 클로즈업 없음, 자연스럽게 반복 재생 가능한 루프 영상.`;
+}
+
+// Tries Kling AI for a short, on-theme animated clip and loops it with
+// ffmpeg to fill the scene's actual (TTS-measured) duration — Kling only
+// generates a few seconds per call, so looping keeps cost to exactly one
+// Kling call per scene regardless of narration length. Falls back to the
+// free gradient background (lib/background.js) if KLING_API_KEY isn't
+// set, or if the Kling call fails for any reason (quota, content policy,
+// timeout, etc.) so a flaky/unset video-gen provider never breaks the
+// whole pipeline.
+async function getSceneBackgroundVideo(scene, index, cutName, topic) {
+  if (process.env.KLING_API_KEY) {
+    try {
+      const prompt = buildKlingPrompt(scene, topic);
+      const externalTaskId = `shortapp-${Date.now()}-${index}`;
+      console.log(`     Kling으로 배경 클립 생성 중 (task: ${externalTaskId})...`);
+      const { buffer } = await generateSceneClip(prompt, externalTaskId);
+
+      const rawClipPath = path.join(BUILD_DIR, `${cutName}-kling-raw.mp4`);
+      fs.writeFileSync(rawClipPath, buffer);
+
+      const loopedPath = path.join(BUILD_DIR, `${cutName}-bg.mp4`);
+      run('ffmpeg', [
+        '-y',
+        '-stream_loop', '-1',
+        '-i', rawClipPath,
+        '-t', scene.duration.toFixed(2),
+        '-vf', `scale=${WIDTH}:${HEIGHT}:force_original_aspect_ratio=increase,crop=${WIDTH}:${HEIGHT}`,
+        '-r', String(FPS),
+        '-pix_fmt', 'yuv420p',
+        '-an',
+        loopedPath
+      ]);
+      return loopedPath;
+    } catch (err) {
+      console.warn(`     Kling 생성 실패, 무료 그라데이션 배경으로 대체합니다: ${err.message}`);
+    }
+  }
+
+  const backgroundImagePath = path.join(BUILD_DIR, `${cutName}-bg.png`);
+  const backgroundImage = await generateSceneBackgroundImage(topic, scene.visual, index);
+  fs.writeFileSync(backgroundImagePath, backgroundImage);
+
+  const backgroundVideoPath = path.join(BUILD_DIR, `${cutName}-bg.mp4`);
+  renderBackgroundVideo(backgroundImagePath, scene.duration, backgroundVideoPath);
+  return backgroundVideoPath;
 }
 
 function loadScenes(latest) {
@@ -145,12 +197,7 @@ async function main() {
     const cutName = `cut-${String(i + 1).padStart(2, '0')}-${slugify(scene.label)}`;
     console.log(`  -> [${i + 1}/${timedScenes.length}] ${scene.label} (${scene.duration.toFixed(2)}초) — 비주얼: ${scene.visual || '(기본)'}`);
 
-    const backgroundImagePath = path.join(BUILD_DIR, `${cutName}-bg.png`);
-    const backgroundImage = await generateSceneBackgroundImage(latest.topic, scene.visual, i);
-    fs.writeFileSync(backgroundImagePath, backgroundImage);
-
-    const cutBackgroundVideoPath = path.join(BUILD_DIR, `${cutName}-bg.mp4`);
-    renderBackgroundVideo(backgroundImagePath, scene.duration, cutBackgroundVideoPath);
+    const cutBackgroundVideoPath = await getSceneBackgroundVideo(scene, i, cutName, latest.topic);
 
     const cutAssPath = path.join(BUILD_DIR, `${cutName}.ass`);
     fs.writeFileSync(cutAssPath, buildAssSubtitles([{ label: scene.label, text: scene.narration, start: 0, duration: scene.duration }]), 'utf8');
