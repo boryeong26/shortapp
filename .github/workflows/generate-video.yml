@@ -1,0 +1,41 @@
+name: 영상 제작 (음성 + 자막 + 배경)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  generate-video:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Node.js 설정
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 시스템 패키지 설치 (ffmpeg, 한글 폰트)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-noto-cjk
+
+      - name: npm 의존성 설치
+        run: npm install
+
+      - name: 영상 생성
+        env:
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+        run: node scripts/generate-video.js
+
+      - name: 결과 mp4 아티팩트 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: shorts-video
+          path: |
+            output/shorts.mp4
+            output/shorts.meta.json
+          retention-days: 90
