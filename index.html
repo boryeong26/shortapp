@@ -542,7 +542,36 @@
     const API_BASE_URL = location.hostname.endsWith('.vercel.app') ? '' : VERCEL_APP_URL;
 
     const SESSION_KEY = 'shortapp_session_token';
+    const PENDING_KEY = 'shortapp_pending_workflow';
+    const PENDING_MAX_AGE_MS = 20 * 60 * 1000; // ignore stale markers older than 20 minutes
     let lastKnownGeneratedAt = null;
+
+    // Progress ("실행 중...") only lived in JS variables, so refreshing the
+    // page — or GitHub Pages/Vercel just being closed and reopened while a
+    // multi-minute video render was still running — silently dropped it.
+    // Persisting a small marker in localStorage lets the page notice a
+    // workflow is still in flight and resume polling automatically.
+    function savePendingWorkflow(workflowKey, label, beforeGeneratedAt) {
+      try {
+        localStorage.setItem(PENDING_KEY, JSON.stringify({ workflowKey, label, beforeGeneratedAt, startedAt: Date.now() }));
+      } catch (e) { /* ignore */ }
+    }
+
+    function getPendingWorkflow() {
+      try {
+        const raw = localStorage.getItem(PENDING_KEY);
+        if (!raw) return null;
+        const pending = JSON.parse(raw);
+        if (!pending || Date.now() - pending.startedAt > PENDING_MAX_AGE_MS) return null;
+        return pending;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function clearPendingWorkflow() {
+      try { localStorage.removeItem(PENDING_KEY); } catch (e) { /* ignore */ }
+    }
 
     const loginView = document.getElementById('loginView');
     const controlView = document.getElementById('controlView');
@@ -604,6 +633,7 @@
         setSessionToken(data.token);
         passwordInput.value = '';
         renderAuthState();
+        resumePendingWorkflowIfAny();
       } catch (err) {
         showAuthError(err.message || '로그인 중 오류가 발생했습니다.');
       } finally {
@@ -642,6 +672,7 @@
         }
 
         statusLine.textContent = `${label} 실행됨. 진행 상황 확인 중...`;
+        savePendingWorkflow(workflowKey, label, beforeGeneratedAt);
         pollWorkflowStatus(workflowKey, label, beforeGeneratedAt);
       } catch (err) {
         statusLine.textContent = `오류: ${err.message}`;
@@ -701,6 +732,7 @@
             const ok = data.conclusion === 'success';
             runScriptBtn.disabled = false;
             runVideoBtn.disabled = false;
+            clearPendingWorkflow();
             if (ok && workflowKey === 'script') {
               waitForFreshScript(beforeGeneratedAt);
             } else {
@@ -723,12 +755,27 @@
           statusLine.textContent = `${label} 상태 확인 시간 초과. Actions 탭에서 직접 확인하세요.`;
           runScriptBtn.disabled = false;
           runVideoBtn.disabled = false;
+          clearPendingWorkflow();
         }
       };
+
+      runScriptBtn.disabled = true;
+      runVideoBtn.disabled = true;
 
       // First status check shortly after dispatch, since GitHub takes a
       // moment to register the queued run.
       setTimeout(tick, 4000);
+    }
+
+    // Runs at page load (and right after login) so a workflow that's still
+    // running when the page is refreshed/reopened picks its status polling
+    // back up automatically instead of the progress line just going blank.
+    function resumePendingWorkflowIfAny() {
+      const pending = getPendingWorkflow();
+      if (!pending || !getSessionToken()) return;
+
+      statusLine.textContent = `${pending.label} 진행 상황 이어서 확인 중...`;
+      pollWorkflowStatus(pending.workflowKey, pending.label, pending.beforeGeneratedAt);
     }
 
     loginBtn.addEventListener('click', login);
@@ -776,6 +823,7 @@
     });
 
     renderAuthState();
+    resumePendingWorkflowIfAny();
 
     const scriptBox = document.getElementById('scriptBox');
     const errorBox = document.getElementById('errorBox');
