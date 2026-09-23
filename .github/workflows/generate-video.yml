@@ -39,4 +39,5 @@ jobs:
           path: |
             output/shorts.mp4
             output/shorts.meta.json
+            output/cuts/**
           retention-days: 90

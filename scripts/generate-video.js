@@ -5,8 +5,12 @@
 // ElevenLabs, measures each segment's actual audio duration, builds an
 // .ass subtitle track synced to those durations, generates a topic-based
 // gradient background, and composites everything into a 9:16 mp4 with
-// ffmpeg. The result is written to build/output.mp4 for the workflow to
-// upload as an artifact.
+// ffmpeg.
+//
+// Rather than only producing one final mux, it also renders each segment
+// as its own standalone cut clip (output/cuts/) with its own text file,
+// so cuts can be individually reviewed/re-cut in an external editor
+// (e.g. CapCut) before treating the full mux as final.
 
 const fs = require('fs');
 const path = require('path');
@@ -19,6 +23,7 @@ const { buildAssSubtitles } = require('../lib/subtitles');
 
 const BUILD_DIR = path.join(__dirname, '..', 'build');
 const OUTPUT_DIR = path.join(__dirname, '..', 'output');
+const CUTS_DIR = path.join(OUTPUT_DIR, 'cuts');
 const FPS = 25;
 
 function run(cmd, args) {
@@ -39,6 +44,40 @@ function ffprobeDuration(filePath) {
   return seconds;
 }
 
+function slugify(label) {
+  return label.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, '_');
+}
+
+function renderBackgroundVideo(backgroundImagePath, durationSeconds, outputPath) {
+  const totalFrames = Math.ceil(durationSeconds * FPS);
+  run('ffmpeg', [
+    '-y',
+    '-loop', '1',
+    '-i', backgroundImagePath,
+    '-t', durationSeconds.toFixed(2),
+    '-vf', `scale=${WIDTH}:${HEIGHT},zoompan=z='min(zoom+0.0006,1.4)':d=${totalFrames}:s=${WIDTH}x${HEIGHT}:fps=${FPS}`,
+    '-r', String(FPS),
+    '-pix_fmt', 'yuv420p',
+    outputPath
+  ]);
+}
+
+function muxWithSubtitles(backgroundVideoPath, audioPath, assPath, outputPath) {
+  run('ffmpeg', [
+    '-y',
+    '-i', backgroundVideoPath,
+    '-i', audioPath,
+    '-vf', `ass=${assPath}`,
+    '-map', '0:v',
+    '-map', '1:a',
+    '-c:v', 'libx264',
+    '-c:a', 'aac',
+    '-shortest',
+    '-pix_fmt', 'yuv420p',
+    outputPath
+  ]);
+}
+
 async function main() {
   const latestPath = path.join(__dirname, 'latest.json');
   if (!fs.existsSync(latestPath)) {
@@ -53,14 +92,16 @@ async function main() {
   }
 
   fs.rmSync(BUILD_DIR, { recursive: true, force: true });
+  fs.rmSync(OUTPUT_DIR, { recursive: true, force: true });
   fs.mkdirSync(BUILD_DIR, { recursive: true });
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  fs.mkdirSync(CUTS_DIR, { recursive: true });
 
-  console.log('1/6 대본을 세그먼트로 분리 중...');
+  console.log('1/7 대본을 세그먼트로 분리 중...');
   const segments = parseScriptSegments(latest.script);
   console.log(`  -> ${segments.length}개 세그먼트: ${segments.map((s) => s.label).join(', ')}`);
 
-  console.log('2/6 세그먼트별 음성 생성 중 (ElevenLabs)...');
+  console.log('2/7 세그먼트별 음성 생성 중 (ElevenLabs)...');
   const audioPaths = [];
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i];
@@ -71,7 +112,7 @@ async function main() {
     console.log(`  -> [${seg.label}] 생성 완료 (${audioBuffer.length} bytes)`);
   }
 
-  console.log('3/6 세그먼트 길이 측정 및 타이밍 계산 중...');
+  console.log('3/7 세그먼트 길이 측정 및 타이밍 계산 중...');
   let cursor = 0;
   const timedSegments = segments.map((seg, i) => {
     const duration = ffprobeDuration(audioPaths[i]);
@@ -82,7 +123,34 @@ async function main() {
   const totalDuration = cursor;
   console.log(`  -> 총 길이: ${totalDuration.toFixed(2)}초`);
 
-  console.log('4/6 오디오 트랙 병합 중...');
+  console.log('4/7 배경 이미지 생성 중...');
+  const backgroundImagePath = path.join(BUILD_DIR, 'background.png');
+  const backgroundImage = await generateBackgroundImage(latest.topic, latest.keyword);
+  fs.writeFileSync(backgroundImagePath, backgroundImage);
+
+  console.log('5/7 컷별 클립 생성 중 (컷 편집용, 각 세그먼트를 독립된 mp4로)...');
+  const cutFiles = [];
+  for (let i = 0; i < timedSegments.length; i++) {
+    const seg = timedSegments[i];
+    const cutName = `cut-${String(i + 1).padStart(2, '0')}-${slugify(seg.label)}`;
+    console.log(`  -> [${i + 1}/${timedSegments.length}] ${seg.label} (${seg.duration.toFixed(2)}초)`);
+
+    const cutBackgroundPath = path.join(BUILD_DIR, `${cutName}-bg.mp4`);
+    renderBackgroundVideo(backgroundImagePath, seg.duration, cutBackgroundPath);
+
+    const cutAssPath = path.join(BUILD_DIR, `${cutName}.ass`);
+    fs.writeFileSync(cutAssPath, buildAssSubtitles([{ ...seg, start: 0 }]), 'utf8');
+
+    const cutVideoPath = path.join(CUTS_DIR, `${cutName}.mp4`);
+    muxWithSubtitles(cutBackgroundPath, audioPaths[i], cutAssPath, cutVideoPath);
+
+    const cutTextPath = path.join(CUTS_DIR, `${cutName}.txt`);
+    fs.writeFileSync(cutTextPath, `${seg.label}\n\n${seg.text}\n`, 'utf8');
+
+    cutFiles.push({ label: seg.label, video: `cuts/${cutName}.mp4`, text: `cuts/${cutName}.txt` });
+  }
+
+  console.log('6/7 오디오 병합 및 전체 배경 렌더링 중 (최종본 미리보기용)...');
   const mergedAudioPath = path.join(BUILD_DIR, 'audio.mp3');
   {
     const inputArgs = audioPaths.flatMap((p) => ['-i', p]);
@@ -97,42 +165,15 @@ async function main() {
     ]);
   }
 
-  console.log('5/6 배경 이미지 생성 및 줌인 영상 렌더링 중...');
-  const backgroundImagePath = path.join(BUILD_DIR, 'background.png');
-  const backgroundImage = await generateBackgroundImage(latest.topic, latest.keyword);
-  fs.writeFileSync(backgroundImagePath, backgroundImage);
-
   const backgroundVideoPath = path.join(BUILD_DIR, 'background.mp4');
-  const totalFrames = Math.ceil(totalDuration * FPS);
-  run('ffmpeg', [
-    '-y',
-    '-loop', '1',
-    '-i', backgroundImagePath,
-    '-t', totalDuration.toFixed(2),
-    '-vf', `scale=${WIDTH}:${HEIGHT},zoompan=z='min(zoom+0.0006,1.4)':d=${totalFrames}:s=${WIDTH}x${HEIGHT}:fps=${FPS}`,
-    '-r', String(FPS),
-    '-pix_fmt', 'yuv420p',
-    backgroundVideoPath
-  ]);
+  renderBackgroundVideo(backgroundImagePath, totalDuration, backgroundVideoPath);
 
-  console.log('6/6 자막 생성 및 최종 합성 중...');
+  console.log('7/7 자막 생성 및 최종 합성 중...');
   const assPath = path.join(BUILD_DIR, 'subtitles.ass');
   fs.writeFileSync(assPath, buildAssSubtitles(timedSegments), 'utf8');
 
   const outputPath = path.join(OUTPUT_DIR, 'shorts.mp4');
-  run('ffmpeg', [
-    '-y',
-    '-i', backgroundVideoPath,
-    '-i', mergedAudioPath,
-    '-vf', `ass=${assPath}`,
-    '-map', '0:v',
-    '-map', '1:a',
-    '-c:v', 'libx264',
-    '-c:a', 'aac',
-    '-shortest',
-    '-pix_fmt', 'yuv420p',
-    outputPath
-  ]);
+  muxWithSubtitles(backgroundVideoPath, mergedAudioPath, assPath, outputPath);
 
   const metaPath = path.join(OUTPUT_DIR, 'shorts.meta.json');
   fs.writeFileSync(metaPath, JSON.stringify({
@@ -141,10 +182,13 @@ async function main() {
     keyword: latest.keyword,
     duration: totalDuration,
     generatedAt: new Date().toISOString(),
-    segments: timedSegments.map(({ label, start, duration }) => ({ label, start, duration }))
+    segments: timedSegments.map(({ label, start, duration, text }) => ({ label, start, duration, text })),
+    cuts: cutFiles,
+    finalVideo: 'shorts.mp4',
+    note: '이 shorts.mp4는 자동 조립된 미리보기입니다. cuts/ 폴더의 개별 클립을 CapCut 등으로 가져와 컷 편집 후 최종본을 새로 내보내세요.'
   }, null, 2) + '\n', 'utf8');
 
-  console.log(`완료: ${outputPath}`);
+  console.log(`완료: ${outputPath} (컷 ${cutFiles.length}개는 ${CUTS_DIR}에 저장됨)`);
 }
 
 main().catch((err) => {

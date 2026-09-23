@@ -188,6 +188,40 @@
     text-align: center;
   }
 
+  .script-box.clamped {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .toggle-clamp-btn {
+    display: block;
+    margin: 8px auto 0;
+    background: none;
+    border: none;
+    color: var(--accent-2);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 4px;
+  }
+
+  .download-btn {
+    display: none;
+    width: 100%;
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid var(--accent-2);
+    background: transparent;
+    color: var(--accent-2);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .download-btn:hover { background: rgba(51,226,199,0.1); }
+
   .error-box {
     margin-top: 16px;
     border: 1px solid rgba(255,92,122,0.4);
@@ -369,6 +403,7 @@
         <button class="action-btn" id="runScriptBtn">1. 새 대본 생성하기</button>
         <button class="action-btn" id="runVideoBtn">2. 영상 제작 시작하기 (음성+자막+배경)</button>
         <div class="status-line" id="statusLine"></div>
+        <button class="download-btn" id="downloadBtn">⬇ 완성된 영상 다운로드 (컷별 클립 포함 zip)</button>
       </div>
 
       <div class="error-box" id="authErrorBox"></div>
@@ -381,7 +416,8 @@
       </div>
       <div class="meta-line" id="metaLine">불러오는 중...</div>
       <div class="error-box" id="errorBox"></div>
-      <div class="script-box empty" id="scriptBox">불러오는 중...</div>
+      <div class="script-box empty clamped" id="scriptBox">불러오는 중...</div>
+      <button class="toggle-clamp-btn" id="toggleClampBtn" style="display: none;">더보기</button>
 
       <a class="generate" id="generateBtn" href="https://github.com/boryeong26/shortapp/actions/workflows/generate-script.yml" target="_blank" rel="noopener">
         Actions 탭에서 수동으로 실행하기 →
@@ -409,6 +445,7 @@
     const runScriptBtn = document.getElementById('runScriptBtn');
     const runVideoBtn = document.getElementById('runVideoBtn');
     const statusLine = document.getElementById('statusLine');
+    const downloadBtn = document.getElementById('downloadBtn');
 
     function getSessionToken() {
       try { return sessionStorage.getItem(SESSION_KEY); } catch (e) { return null; }
@@ -528,7 +565,8 @@
               : `${label} 실패 (${data.conclusion}). Actions 탭에서 로그를 확인하세요.`;
             runScriptBtn.disabled = false;
             runVideoBtn.disabled = false;
-            if (ok) setTimeout(loadLatestScript, 500);
+            if (ok && workflowKey === 'script') setTimeout(loadLatestScript, 500);
+            if (ok && workflowKey === 'video') downloadBtn.style.display = 'block';
             return;
           }
 
@@ -565,12 +603,48 @@
     });
     runVideoBtn.addEventListener('click', () => triggerWorkflow('video', '영상 제작'));
 
+    downloadBtn.addEventListener('click', async () => {
+      const token = getSessionToken();
+      if (!token) { renderAuthState(); return; }
+
+      downloadBtn.disabled = true;
+      downloadBtn.textContent = '다운로드 링크 가져오는 중...';
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/artifact-download?token=${encodeURIComponent(token)}&workflow=video`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          if (res.status === 401) { clearSessionToken(); renderAuthState(); }
+          throw new Error(data.error || '다운로드 링크를 가져오지 못했습니다.');
+        }
+
+        const link = document.createElement('a');
+        link.href = data.downloadUrl;
+        link.download = `${data.name || 'shorts-video'}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } catch (err) {
+        statusLine.textContent = `다운로드 실패: ${err.message}`;
+      } finally {
+        downloadBtn.disabled = false;
+        downloadBtn.textContent = '⬇ 완성된 영상 다운로드 (컷별 클립 포함 zip)';
+      }
+    });
+
     renderAuthState();
 
     const scriptBox = document.getElementById('scriptBox');
     const errorBox = document.getElementById('errorBox');
     const copyBtn = document.getElementById('copyBtn');
     const metaLine = document.getElementById('metaLine');
+    const toggleClampBtn = document.getElementById('toggleClampBtn');
+
+    toggleClampBtn.addEventListener('click', () => {
+      const isClamped = scriptBox.classList.toggle('clamped');
+      toggleClampBtn.textContent = isClamped ? '더보기' : '접기';
+    });
 
     async function loadLatestScript() {
       try {
@@ -582,7 +656,9 @@
         if (!data || !data.script) {
           metaLine.textContent = '아직 생성된 대본이 없습니다.';
           scriptBox.classList.add('empty');
+          scriptBox.classList.remove('clamped');
           scriptBox.textContent = 'Actions에서 워크플로우를 실행하면 여기에 대본이 표시됩니다.';
+          toggleClampBtn.style.display = 'none';
           return;
         }
 
@@ -592,13 +668,18 @@
           .join(' · ');
 
         scriptBox.classList.remove('empty');
+        scriptBox.classList.add('clamped');
         scriptBox.textContent = data.script;
+        toggleClampBtn.style.display = 'block';
+        toggleClampBtn.textContent = '더보기';
       } catch (err) {
         errorBox.textContent = `대본을 불러오지 못했습니다: ${err.message}`;
         errorBox.style.display = 'block';
         metaLine.textContent = '';
         scriptBox.classList.add('empty');
+        scriptBox.classList.remove('clamped');
         scriptBox.textContent = '불러오기 실패';
+        toggleClampBtn.style.display = 'none';
       }
     }
 
