@@ -19,7 +19,7 @@ const { execFileSync } = require('child_process');
 const { parseScriptSegments } = require('../lib/scriptSegments');
 const { synthesizeSpeech } = require('../lib/tts');
 const { generateSceneBackgroundImage, WIDTH, HEIGHT } = require('../lib/background');
-const { generateSceneClip, DEFAULT_CLIP_DURATION } = require('../lib/videoGen');
+const { generateSceneClipWithRetry, DEFAULT_CLIP_DURATION } = require('../lib/videoGen');
 const { buildAssSubtitles, buildSceneCues } = require('../lib/subtitles');
 
 const BUILD_DIR = path.join(__dirname, '..', 'build');
@@ -84,70 +84,83 @@ function buildKlingPrompt(scene, topic) {
   return `${description}. 부드럽고 느린 카메라 움직임, 자막이나 글자 없음, 사람 얼굴 클로즈업 없음, 자연스럽게 반복 재생 가능한 루프 영상.`;
 }
 
+// Renders a single gradient-fallback clip of the given duration, normalized
+// to the same codec/scale/fps as Kling clips so it can sit in the same
+// concat list without a re-encode mismatch.
+async function renderGradientClip(topic, visual, seedSuffix, durationSeconds, outPath) {
+  const backgroundImagePath = `${outPath}.png`;
+  const backgroundImage = await generateSceneBackgroundImage(topic, visual, seedSuffix);
+  fs.writeFileSync(backgroundImagePath, backgroundImage);
+  renderBackgroundVideo(backgroundImagePath, durationSeconds, outPath);
+}
+
 // Requests as many distinct Kling clips as needed to cover a scene's full
 // (TTS-measured) duration and concatenates them — no looping, so nothing
 // visibly repeats even for a long [본문] scene. This costs proportionally
 // more than looping a single clip (Kling bills per second regardless of
 // whether the content repeats), but was chosen deliberately over the
-// cheaper loop-one-clip approach. Falls back to the free gradient
-// background (lib/background.js) if KLING_API_KEY isn't set, or if any
-// Kling call fails (quota, content policy, timeout, etc.) so a flaky/unset
-// video-gen provider never breaks the whole pipeline — whatever clips did
-// succeed before the failure are discarded and the whole scene falls back
-// together, so a cut never mixes Kling and gradient segments.
+// cheaper loop-one-clip approach.
+//
+// Each clip is attempted with its own retry budget (see
+// generateSceneClipWithRetry). If a clip still fails after retries, only
+// that one clip falls back to a free gradient segment of the same
+// duration — clips that already succeeded (and were already billed) are
+// kept and concatenated alongside it, instead of discarding the whole
+// scene as before. If KLING_API_KEY isn't set at all, the whole scene
+// uses one gradient clip for its full duration (unchanged behavior).
 async function getSceneBackgroundVideo(scene, index, cutName, topic) {
-  if (process.env.KLING_API_KEY) {
-    try {
-      const clipSeconds = Number(process.env.KLING_CLIP_DURATION) || DEFAULT_CLIP_DURATION;
-      const clipCount = Math.max(1, Math.ceil(scene.duration / clipSeconds));
-      console.log(`     Kling으로 배경 클립 ${clipCount}개 생성 중 (반복 없이 이어붙임, 클립당 ${clipSeconds}초)...`);
-
-      const normalizedClipPaths = [];
-      for (let c = 0; c < clipCount; c++) {
-        const prompt = buildKlingPrompt(scene, topic);
-        const externalTaskId = `shortapp-${Date.now()}-${index}-${c}`;
-        console.log(`       -> 클립 ${c + 1}/${clipCount} (task: ${externalTaskId})`);
-        const { buffer } = await generateSceneClip(prompt, externalTaskId, { duration: clipSeconds });
-
-        const rawClipPath = path.join(BUILD_DIR, `${cutName}-kling-raw-${c}.mp4`);
-        fs.writeFileSync(rawClipPath, buffer);
-
-        const normalizedClipPath = path.join(BUILD_DIR, `${cutName}-kling-norm-${c}.mp4`);
-        run('ffmpeg', [
-          '-y',
-          '-i', rawClipPath,
-          '-vf', `scale=${WIDTH}:${HEIGHT}:force_original_aspect_ratio=increase,crop=${WIDTH}:${HEIGHT}`,
-          '-r', String(FPS),
-          '-pix_fmt', 'yuv420p',
-          '-an',
-          normalizedClipPath
-        ]);
-        normalizedClipPaths.push(normalizedClipPath);
-      }
-
-      const concatListPath = path.join(BUILD_DIR, `${cutName}-kling-concat.txt`);
-      const concatList = normalizedClipPaths.map((p) => `file '${p.replace(/'/g, "'\\''")}'`).join('\n') + '\n';
-      fs.writeFileSync(concatListPath, concatList, 'utf8');
-
-      // All segments share identical codec/scale/fps/pix_fmt from the
-      // normalize step above, so a stream-copy concat is safe. Any extra
-      // length beyond the scene's actual duration gets trimmed later by
-      // muxWithSubtitles' -shortest (it's muxed against the audio track).
-      const joinedPath = path.join(BUILD_DIR, `${cutName}-bg.mp4`);
-      run('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', concatListPath, '-c', 'copy', joinedPath]);
-      return joinedPath;
-    } catch (err) {
-      console.warn(`     Kling 생성 실패, 무료 그라데이션 배경으로 대체합니다: ${err.message}`);
-    }
+  if (!process.env.KLING_API_KEY) {
+    const backgroundVideoPath = path.join(BUILD_DIR, `${cutName}-bg.mp4`);
+    await renderGradientClip(topic, scene.visual, index, scene.duration, backgroundVideoPath);
+    return backgroundVideoPath;
   }
 
-  const backgroundImagePath = path.join(BUILD_DIR, `${cutName}-bg.png`);
-  const backgroundImage = await generateSceneBackgroundImage(topic, scene.visual, index);
-  fs.writeFileSync(backgroundImagePath, backgroundImage);
+  const clipSeconds = Number(process.env.KLING_CLIP_DURATION) || DEFAULT_CLIP_DURATION;
+  const clipCount = Math.max(1, Math.ceil(scene.duration / clipSeconds));
+  console.log(`     Kling으로 배경 클립 ${clipCount}개 생성 중 (반복 없이 이어붙임, 클립당 ${clipSeconds}초)...`);
 
-  const backgroundVideoPath = path.join(BUILD_DIR, `${cutName}-bg.mp4`);
-  renderBackgroundVideo(backgroundImagePath, scene.duration, backgroundVideoPath);
-  return backgroundVideoPath;
+  const normalizedClipPaths = [];
+  for (let c = 0; c < clipCount; c++) {
+    const normalizedClipPath = path.join(BUILD_DIR, `${cutName}-kling-norm-${c}.mp4`);
+
+    try {
+      const prompt = buildKlingPrompt(scene, topic);
+      const externalTaskId = `shortapp-${Date.now()}-${index}-${c}`;
+      console.log(`       -> 클립 ${c + 1}/${clipCount} (task: ${externalTaskId})`);
+      const { buffer } = await generateSceneClipWithRetry(prompt, externalTaskId, { duration: clipSeconds });
+
+      const rawClipPath = path.join(BUILD_DIR, `${cutName}-kling-raw-${c}.mp4`);
+      fs.writeFileSync(rawClipPath, buffer);
+
+      run('ffmpeg', [
+        '-y',
+        '-i', rawClipPath,
+        '-vf', `scale=${WIDTH}:${HEIGHT}:force_original_aspect_ratio=increase,crop=${WIDTH}:${HEIGHT}`,
+        '-r', String(FPS),
+        '-pix_fmt', 'yuv420p',
+        '-an',
+        normalizedClipPath
+      ]);
+    } catch (err) {
+      console.warn(`       -> 클립 ${c + 1}/${clipCount} 재시도 끝에 실패, 이 클립만 그라데이션으로 대체합니다: ${err.message}`);
+      await renderGradientClip(topic, scene.visual, `${index}-${c}`, clipSeconds, normalizedClipPath);
+    }
+
+    normalizedClipPaths.push(normalizedClipPath);
+  }
+
+  const concatListPath = path.join(BUILD_DIR, `${cutName}-kling-concat.txt`);
+  const concatList = normalizedClipPaths.map((p) => `file '${p.replace(/'/g, "'\\''")}'`).join('\n') + '\n';
+  fs.writeFileSync(concatListPath, concatList, 'utf8');
+
+  // All segments share identical codec/scale/fps/pix_fmt (either from the
+  // Kling normalize step or from renderBackgroundVideo's own encode
+  // settings), so a stream-copy concat is safe. Any extra length beyond
+  // the scene's actual duration gets trimmed later by muxWithSubtitles'
+  // -shortest (it's muxed against the audio track).
+  const joinedPath = path.join(BUILD_DIR, `${cutName}-bg.mp4`);
+  run('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', concatListPath, '-c', 'copy', joinedPath]);
+  return joinedPath;
 }
 
 function loadScenes(latest) {
