@@ -275,6 +275,43 @@
 
   .scene-item input[type="text"]:focus { border-color: var(--accent); }
 
+  .scene-item .cut-index {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--bg);
+    background: var(--accent-2);
+    border-radius: 999px;
+    padding: 2px 9px;
+    margin-right: 8px;
+  }
+
+  .cost-box {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--panel-border);
+  }
+
+  .cost-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+
+  .cost-lines {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.8;
+  }
+
+  .cost-total {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent-2);
+    margin-top: 8px;
+  }
+
   .error-box {
     margin-top: 16px;
     border: 1px solid rgba(255,92,122,0.4);
@@ -454,7 +491,7 @@
         </div>
 
         <button class="action-btn" id="runScriptBtn">1. 새 대본 생성하기</button>
-        <button class="action-btn" id="runVideoBtn">2. 영상 제작 시작하기 (음성+자막+배경)</button>
+        <button class="action-btn" id="runVideoBtn">2. 최종 영상 제작하기 (음성+자막+배경)</button>
         <div class="status-line" id="statusLine"></div>
         <button class="download-btn" id="downloadBtn">⬇ 완성된 영상 다운로드 (컷별 클립 포함 zip)</button>
       </div>
@@ -480,12 +517,19 @@
 
     <div class="card" id="scenesCard" style="margin-top: 24px; display: none;">
       <div class="result-header">
-        <h2>장면별 편집</h2>
+        <h2>스토리보드 (컷별 편집)</h2>
       </div>
-      <p class="hint" style="margin-top: 0; margin-bottom: 16px; text-align: left;">각 장면의 내레이션과 배경 분위기(비주얼 묘사)를 직접 수정할 수 있습니다. 저장 후 "2. 영상 제작 시작하기"를 누르면 이 내용으로 만들어집니다.</p>
+      <p class="hint" style="margin-top: 0; margin-bottom: 16px; text-align: left;">컷마다 내레이션과 배경 분위기(비주얼 묘사)를 직접 수정할 수 있습니다. 수정사항을 저장한 뒤, 더 바꿀 게 없으면 아래 "2. 최종 영상 제작하기"를 눌러 완성하세요.</p>
       <div id="scenesList"></div>
       <button class="action-btn" id="saveScenesBtn">변경사항 저장</button>
       <div class="status-line" id="scenesSaveStatus"></div>
+
+      <div class="cost-box" id="costBox" style="display: none;">
+        <div class="cost-title">예상 비용 (참고용 추정치)</div>
+        <div class="cost-lines" id="costLines"></div>
+        <div class="cost-total" id="costTotal"></div>
+        <p class="hint" style="margin-top: 8px;">실제 공개 요금(Claude Sonnet 5, ElevenLabs eleven_multilingual_v2, Kling AI 정가) 기준 계산이며, 플랜/환율에 따라 실제 청구액과 다를 수 있습니다.</p>
+      </div>
     </div>
   </main>
 
@@ -750,6 +794,77 @@
     const scenesSaveStatus = document.getElementById('scenesSaveStatus');
     let currentSceneMeta = null;
 
+    // Published rates (checked live, not guessed):
+    // - Claude Sonnet 5: $2/1M input tokens, $10/1M output tokens
+    // - ElevenLabs eleven_multilingual_v2: $0.10 / 1,000 characters
+    // - Kling AI (kling-o1), list price: $0.14 / second of generated video
+    const PRICING = {
+      claudeInputPerMTokens: 2,
+      claudeOutputPerMTokens: 10,
+      elevenLabsPer1000Chars: 0.10,
+      klingPerSecond: 0.14
+    };
+    const KLING_CLIP_SECONDS = 5; // matches the default in lib/videoGen.js
+    const USD_TO_KRW = 1450; // approximate, for display only
+
+    function estimateCost(scenes) {
+      const totalChars = scenes.reduce((sum, s) => sum + (s.narration || '').length, 0);
+
+      // Rough flat estimate for one script-generation call (prompt +
+      // structured JSON scene output) — not derived from these specific
+      // scenes, since the script call already happened before editing.
+      const scriptInputTokens = 700;
+      const scriptOutputTokens = 1200;
+      const scriptCost = (scriptInputTokens * PRICING.claudeInputPerMTokens
+        + scriptOutputTokens * PRICING.claudeOutputPerMTokens) / 1e6;
+
+      const ttsCost = (totalChars / 1000) * PRICING.elevenLabsPer1000Chars;
+      const videoCost = scenes.length * KLING_CLIP_SECONDS * PRICING.klingPerSecond;
+
+      return {
+        scriptCost,
+        ttsCost,
+        videoCost,
+        total: scriptCost + ttsCost + videoCost
+      };
+    }
+
+    function formatUsd(n) {
+      return `$${n.toFixed(n < 0.01 ? 4 : 2)}`;
+    }
+
+    function updateCostEstimate() {
+      const costBox = document.getElementById('costBox');
+      const costLines = document.getElementById('costLines');
+      const costTotal = document.getElementById('costTotal');
+      const items = scenesList.querySelectorAll('.scene-item');
+
+      if (items.length === 0) {
+        costBox.style.display = 'none';
+        return;
+      }
+
+      const scenes = Array.from(items).map((item) => ({
+        narration: item.querySelector('textarea').value
+      }));
+
+      const cost = estimateCost(scenes);
+      costLines.innerHTML = '';
+      [
+        ['대본 생성 (Claude Sonnet 5)', cost.scriptCost],
+        [`음성 합성 (ElevenLabs, ${scenes.reduce((s, sc) => s + sc.narration.length, 0)}자)`, cost.ttsCost],
+        [`영상 배경 (Kling AI, 컷 ${scenes.length}개 × ${KLING_CLIP_SECONDS}초)`, cost.videoCost]
+      ].forEach(([label, value]) => {
+        const line = document.createElement('div');
+        line.textContent = `${label}: ${formatUsd(value)}`;
+        costLines.appendChild(line);
+      });
+
+      const krw = Math.round(cost.total * USD_TO_KRW);
+      costTotal.textContent = `총 약 ${formatUsd(cost.total)} (₩${krw.toLocaleString('ko-KR')})`;
+      costBox.style.display = 'block';
+    }
+
     function renderScenes(data) {
       scenesList.textContent = '';
 
@@ -768,18 +883,23 @@
         labels: data.scenes.map((s) => s.label)
       };
 
-      data.scenes.forEach((scene) => {
+      data.scenes.forEach((scene, i) => {
         const item = document.createElement('div');
         item.className = 'scene-item';
 
         const labelEl = document.createElement('div');
         labelEl.className = 'scene-label';
-        labelEl.textContent = scene.label;
+        const indexBadge = document.createElement('span');
+        indexBadge.className = 'cut-index';
+        indexBadge.textContent = `컷 ${i + 1}`;
+        labelEl.appendChild(indexBadge);
+        labelEl.appendChild(document.createTextNode(scene.label));
         item.appendChild(labelEl);
 
         const textarea = document.createElement('textarea');
         textarea.dataset.field = 'narration';
         textarea.value = scene.narration || '';
+        textarea.addEventListener('input', updateCostEstimate);
         item.appendChild(textarea);
 
         const visualLabel = document.createElement('label');
@@ -798,6 +918,7 @@
       });
 
       scenesCard.style.display = 'block';
+      updateCostEstimate();
     }
 
     async function saveScenes() {
