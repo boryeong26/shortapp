@@ -256,6 +256,40 @@
     min-height: 18px;
   }
 
+  .field-label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  @media (max-width: 480px) {
+    .form-grid { grid-template-columns: 1fr; }
+  }
+
+  .form-grid select,
+  .form-grid input,
+  .field-full select,
+  .field-full input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--panel-border);
+    background: #0a0d1a;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+  }
+
+  .field-full { margin-bottom: 12px; }
+
   footer {
     text-align: center;
     color: var(--text-dim);
@@ -294,6 +328,44 @@
           <h2 style="font-size: 16px; margin: 0; color: var(--text-dim); font-weight: 600;">파이프라인 실행</h2>
           <button class="logout-link" id="logoutBtn">로그아웃</button>
         </div>
+        <div class="form-grid">
+          <div>
+            <label class="field-label" for="topicSelect">주제</label>
+            <select id="topicSelect">
+              <option value="랜덤">랜덤 (자동 선택)</option>
+              <option value="우주">우주</option>
+              <option value="물리학">물리학</option>
+              <option value="생물학">생물학</option>
+              <option value="화학">화학</option>
+              <option value="뇌과학">뇌과학</option>
+              <option value="인체">인체</option>
+              <option value="기후/지구과학">기후·지구과학</option>
+              <option value="테크놀로지">테크놀로지</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label" for="toneSelect">톤 & 스타일</label>
+            <select id="toneSelect">
+              <option value="흥미진진하고 호기심을 자극하는">흥미진진하게</option>
+              <option value="차분하고 신뢰감 있는">차분하고 신뢰감 있게</option>
+              <option value="유머러스하고 가벼운">유머러스하게</option>
+              <option value="긴장감 있고 반전이 있는">반전 있게</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-full">
+          <label class="field-label" for="keywordInput">세부 키워드 (선택)</label>
+          <input type="text" id="keywordInput" placeholder="예: 블랙홀, 도파민, mRNA 백신 등">
+        </div>
+        <div class="field-full">
+          <label class="field-label" for="durationSelect">영상 길이</label>
+          <select id="durationSelect">
+            <option value="30">30초</option>
+            <option value="60" selected>60초</option>
+            <option value="90">90초</option>
+          </select>
+        </div>
+
         <button class="action-btn" id="runScriptBtn">1. 새 대본 생성하기</button>
         <button class="action-btn" id="runVideoBtn">2. 영상 제작 시작하기 (음성+자막+배경)</button>
         <div class="status-line" id="statusLine"></div>
@@ -401,7 +473,7 @@
       renderAuthState();
     }
 
-    async function triggerWorkflow(workflowKey, label) {
+    async function triggerWorkflow(workflowKey, label, options = {}) {
       const token = getSessionToken();
       if (!token) { renderAuthState(); return; }
 
@@ -413,7 +485,7 @@
         const res = await fetch(`${API_BASE_URL}/api/trigger-workflow`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token, workflow: workflowKey })
+          body: JSON.stringify({ token, workflow: workflowKey, ...options })
         });
         const data = await res.json();
 
@@ -482,7 +554,15 @@
     loginBtn.addEventListener('click', login);
     passwordInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
     logoutBtn.addEventListener('click', logout);
-    runScriptBtn.addEventListener('click', () => triggerWorkflow('script', '대본 생성'));
+    runScriptBtn.addEventListener('click', () => {
+      const options = {
+        topic: document.getElementById('topicSelect').value,
+        tone: document.getElementById('toneSelect').value,
+        keyword: document.getElementById('keywordInput').value.trim(),
+        duration: document.getElementById('durationSelect').value
+      };
+      triggerWorkflow('script', '대본 생성', options);
+    });
     runVideoBtn.addEventListener('click', () => triggerWorkflow('video', '영상 제작'));
 
     renderAuthState();
