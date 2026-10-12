@@ -1,14 +1,18 @@
 // POST /api/search-videos
-// Body: { token, query }
+// Body: { query }
 // Response: { candidates: [{ videoId, title, channelTitle, thumbnail, durationSeconds, url, comment }] }
 //
 // Searches YouTube for videos matching the query, then asks Claude for a
 // short Korean recommendation comment per result (one Claude call for
 // the whole page of results). Nothing is downloaded — this only ever
 // links out to YouTube.
+//
+// No login/auth gate: anyone who can load the page can trigger this,
+// which calls both the YouTube Data API and the Claude API. Fine for
+// personal/low-traffic use; if this page gets wider traffic, that's an
+// open cost/quota exposure worth reconsidering.
 
 const { applyCors } = require('../lib/cors');
-const { verifySessionToken } = require('../lib/auth');
 const { searchVideos } = require('../lib/youtubeSearch');
 const { generateCommentary } = require('../lib/recommendCommentary');
 
@@ -20,23 +24,13 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const authSecret = process.env.AUTH_SECRET;
   const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
-  if (!authSecret) {
-    res.status(500).json({ error: '서버에 AUTH_SECRET이 설정되어 있지 않습니다.' });
-    return;
-  }
 
   let body = req.body;
   if (typeof body === 'string') {
     try { body = JSON.parse(body); } catch (e) { body = {}; }
   }
   body = body || {};
-
-  if (!verifySessionToken(body.token, authSecret)) {
-    res.status(401).json({ error: '로그인이 만료되었거나 유효하지 않습니다. 다시 로그인해주세요.' });
-    return;
-  }
 
   const query = typeof body.query === 'string' ? body.query.trim().slice(0, 100) : '';
   if (!query) {

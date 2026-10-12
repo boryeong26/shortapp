@@ -1,14 +1,16 @@
 // POST /api/save-recommendations
-// Body: { token, topic, items }
+// Body: { topic, items }
 // items: [{ videoId, title, channelTitle, thumbnail, durationSeconds, url, comment }]
 //
 // Persists the user's saved/curated video list to data/recommendations.json
 // in the repo via the GitHub Contents API, so it survives a page refresh
 // and is visible to anyone viewing the published site. Requires
 // GITHUB_DISPATCH_TOKEN to have Contents: Read and write on the repo.
+//
+// No login/auth gate: anyone who can load the page can overwrite the
+// saved list. Fine for personal/low-traffic use.
 
 const { applyCors } = require('../lib/cors');
-const { verifySessionToken } = require('../lib/auth');
 
 const FILE_PATH = 'data/recommendations.json';
 
@@ -20,13 +22,12 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const authSecret = process.env.AUTH_SECRET;
   const githubToken = process.env.GITHUB_DISPATCH_TOKEN;
   const repo = process.env.GITHUB_REPO || 'boryeong26/shortapp';
   const ref = process.env.GITHUB_REF || 'main';
 
-  if (!authSecret || !githubToken) {
-    res.status(500).json({ error: '서버에 AUTH_SECRET/GITHUB_DISPATCH_TOKEN이 설정되어 있지 않습니다.' });
+  if (!githubToken) {
+    res.status(500).json({ error: '서버에 GITHUB_DISPATCH_TOKEN이 설정되어 있지 않습니다.' });
     return;
   }
 
@@ -35,11 +36,6 @@ module.exports = async (req, res) => {
     try { body = JSON.parse(body); } catch (e) { body = {}; }
   }
   body = body || {};
-
-  if (!verifySessionToken(body.token, authSecret)) {
-    res.status(401).json({ error: '로그인이 만료되었거나 유효하지 않습니다. 다시 로그인해주세요.' });
-    return;
-  }
 
   const items = Array.isArray(body.items) ? body.items : null;
   if (!items) {
