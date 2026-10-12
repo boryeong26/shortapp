@@ -1,5 +1,5 @@
 // POST /api/trigger-workflow
-// Body: { token, workflow: 'script'|'video', topic?, tone?, keyword?, duration? }
+// Body: { token, workflow: 'script'|'video', topic?, selectedClips? }
 //
 // Dispatches the corresponding GitHub Actions workflow via the GitHub
 // REST API, using a server-side GITHUB_DISPATCH_TOKEN. This is the piece
@@ -13,6 +13,61 @@ const WORKFLOW_FILES = {
   script: 'generate-script.yml',
   video: 'generate-video.yml'
 };
+
+const YOUTUBE_ID_RE = /^[\w-]{11}$/;
+const RANK_COUNT = 5;
+const MAX_CLIP_SECONDS = 60;
+
+// Validates the 5 clips the user picked/ranked on the page before they
+// get baked into a workflow_dispatch input string — this is the only
+// server-side check standing between the browser and what yt-dlp/Claude
+// actually see, so it's worth being strict here.
+function validateSelectedClips(raw) {
+  if (!Array.isArray(raw) || raw.length !== RANK_COUNT) {
+    throw new Error(`클립은 정확히 ${RANK_COUNT}개 선택해야 합니다.`);
+  }
+
+  const seenRanks = new Set();
+  const cleaned = raw.map((c) => {
+    const rank = Number(c.rank);
+    const videoId = String(c.videoId || '');
+    const start = Number(c.start);
+    const end = Number(c.end);
+
+    if (!Number.isInteger(rank) || rank < 1 || rank > RANK_COUNT) {
+      throw new Error('순위 값이 올바르지 않습니다.');
+    }
+    if (seenRanks.has(rank)) {
+      throw new Error('중복된 순위가 있습니다.');
+    }
+    seenRanks.add(rank);
+
+    if (!YOUTUBE_ID_RE.test(videoId)) {
+      throw new Error('영상 ID가 올바르지 않습니다.');
+    }
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end - start > MAX_CLIP_SECONDS) {
+      throw new Error(`클립 구간이 올바르지 않습니다 (0초 이상, 최대 ${MAX_CLIP_SECONDS}초).`);
+    }
+
+    return {
+      rank,
+      videoId,
+      title: String(c.title || '').slice(0, 150),
+      channelTitle: String(c.channelTitle || '').slice(0, 100),
+      channelId: String(c.channelId || '').slice(0, 50),
+      url: String(c.url || `https://www.youtube.com/watch?v=${videoId}`).slice(0, 200),
+      description: String(c.description || '').slice(0, 300),
+      start,
+      end
+    };
+  });
+
+  if (seenRanks.size !== RANK_COUNT) {
+    throw new Error('순위는 1~5가 각각 한 번씩 있어야 합니다.');
+  }
+
+  return cleaned;
+}
 
 module.exports = async (req, res) => {
   if (applyCors(req, res)) return;
@@ -51,10 +106,13 @@ module.exports = async (req, res) => {
 
   const inputs = {};
   if (body.workflow === 'script') {
-    if (body.topic) inputs.topic = String(body.topic).slice(0, 100);
-    if (body.tone) inputs.tone = String(body.tone).slice(0, 100);
-    if (body.keyword) inputs.keyword = String(body.keyword).slice(0, 100);
-    if (body.duration) inputs.duration = String(body.duration).slice(0, 10);
+    inputs.topic = String(body.topic || '순위 모음').slice(0, 100);
+    try {
+      inputs.selectedClips = JSON.stringify(validateSelectedClips(body.selectedClips));
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
   }
 
   try {

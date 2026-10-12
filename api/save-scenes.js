@@ -1,15 +1,13 @@
 // POST /api/save-scenes
-// Body: { token, topic, tone, keyword, duration, generatedAt, scenes }
+// Body: { token, topic, generatedAt, items }
 //
-// Persists edited scenes (narration/visual per scene, editable on the
+// Persists edited narration (intro/rank items/outro, editable on the
 // page before video generation runs) back to scripts/latest.json in the
 // repo via the GitHub Contents API. Requires GITHUB_DISPATCH_TOKEN to
-// have Contents: Read and write on the repo (the video-trigger-only
-// setup only needed Read).
+// have Contents: Read and write on the repo.
 
 const { applyCors } = require('../lib/cors');
 const { verifySessionToken } = require('../lib/auth');
-const { scenesToScript, SCENE_LABELS } = require('../lib/scriptGenerator');
 
 const FILE_PATH = 'scripts/latest.json';
 
@@ -42,37 +40,49 @@ module.exports = async (req, res) => {
     return;
   }
 
-  const scenes = Array.isArray(body.scenes) ? body.scenes : null;
-  if (!scenes || scenes.length === 0) {
-    res.status(400).json({ error: 'scenes 배열이 필요합니다.' });
+  const items = Array.isArray(body.items) ? body.items : null;
+  if (!items || items.length === 0) {
+    res.status(400).json({ error: 'items 배열이 필요합니다.' });
     return;
   }
 
-  const missing = SCENE_LABELS.filter((label) => !scenes.some((s) => s.label === label));
-  if (missing.length > 0) {
-    res.status(400).json({ error: `다음 장면이 없습니다: ${missing.join(', ')}` });
+  const hasIntro = items.some((i) => i.type === 'intro');
+  const hasOutro = items.some((i) => i.type === 'outro');
+  const rankCount = items.filter((i) => i.type === 'rank').length;
+  if (!hasIntro || !hasOutro || rankCount === 0) {
+    res.status(400).json({ error: 'items에는 intro 1개, rank 1개 이상, outro 1개가 필요합니다.' });
     return;
   }
 
-  const cleanedScenes = scenes.map((s) => ({
-    label: String(s.label || '').trim(),
-    narration: String(s.narration || '').trim(),
-    visual: String(s.visual || '').trim()
-  }));
+  const cleanedItems = items.map((item) => {
+    const narration = String(item.narration || '').trim();
+    if (item.type === 'rank') {
+      return {
+        type: 'rank',
+        rank: Number(item.rank),
+        videoId: String(item.videoId || ''),
+        title: String(item.title || ''),
+        channelTitle: String(item.channelTitle || ''),
+        channelId: String(item.channelId || ''),
+        url: String(item.url || ''),
+        description: String(item.description || '').slice(0, 300),
+        start: Number(item.start) || 0,
+        end: Number(item.end) || 0,
+        narration
+      };
+    }
+    return { type: item.type, narration };
+  });
 
-  if (cleanedScenes.some((s) => !s.narration)) {
-    res.status(400).json({ error: '모든 장면의 내레이션은 비어 있을 수 없습니다.' });
+  if (cleanedItems.some((item) => !item.narration)) {
+    res.status(400).json({ error: '모든 항목의 내레이션은 비어 있을 수 없습니다.' });
     return;
   }
 
   const updated = {
     generatedAt: body.generatedAt || new Date().toISOString(),
     topic: body.topic || null,
-    tone: body.tone || null,
-    keyword: body.keyword || '',
-    duration: body.duration || null,
-    script: scenesToScript(cleanedScenes),
-    scenes: cleanedScenes
+    items: cleanedItems
   };
 
   const contentsUrl = `https://api.github.com/repos/${repo}/contents/${FILE_PATH}`;
@@ -99,7 +109,7 @@ module.exports = async (req, res) => {
       method: 'PUT',
       headers: { ...githubHeaders, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: 'chore: 장면 편집 저장',
+        message: 'chore: 항목 편집 저장',
         content: contentBase64,
         sha,
         branch: ref
@@ -116,6 +126,6 @@ module.exports = async (req, res) => {
     res.status(200).json({ ok: true });
   } catch (err) {
     console.error('save-scenes error:', err);
-    res.status(500).json({ error: '장면 저장 중 오류가 발생했습니다.' });
+    res.status(500).json({ error: '항목 저장 중 오류가 발생했습니다.' });
   }
 };

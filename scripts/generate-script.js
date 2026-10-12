@@ -1,13 +1,38 @@
-// Node script run by the "소재수집 + 대본생성" GitHub Actions workflow.
-// Generates one science-trivia short-form script and writes it to
-// scripts/latest.json, which index.html reads and displays.
+// Node script run by the "대본 생성 (순위 영상)" GitHub Actions workflow.
 //
-// Reads params from env vars (set by the workflow from workflow_dispatch
-// inputs) and ANTHROPIC_API_KEY from GitHub Secrets.
+// The user has already searched + picked + ranked 5 YouTube clips on the
+// page (see api/search-youtube-clips.js); this just asks Claude to write
+// the commentary narration for them and writes the combined result to
+// scripts/latest.json, which index.html reads and displays for editing.
 
 const fs = require('fs');
 const path = require('path');
-const { generateScript } = require('../lib/scriptGenerator');
+const { generateRankScript, RANK_COUNT } = require('../lib/scriptGenerator');
+
+function parseSelectedClips(raw) {
+  let clips;
+  try {
+    clips = JSON.parse(raw || '[]');
+  } catch (e) {
+    throw new Error('SELECTED_CLIPS를 JSON으로 해석하지 못했습니다.');
+  }
+
+  if (!Array.isArray(clips) || clips.length !== RANK_COUNT) {
+    throw new Error(`선택된 클립은 정확히 ${RANK_COUNT}개여야 합니다.`);
+  }
+
+  return clips.map((c) => ({
+    rank: Number(c.rank),
+    videoId: String(c.videoId || ''),
+    title: String(c.title || ''),
+    channelTitle: String(c.channelTitle || ''),
+    channelId: String(c.channelId || ''),
+    url: String(c.url || ''),
+    description: String(c.description || '').slice(0, 300),
+    start: Number(c.start) || 0,
+    end: Number(c.end) || 0
+  }));
+}
 
 async function main() {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -16,30 +41,28 @@ async function main() {
     process.exit(1);
   }
 
-  const input = {
-    topic: process.env.GENERATE_TOPIC,
-    tone: process.env.GENERATE_TONE,
-    keyword: process.env.GENERATE_KEYWORD,
-    duration: process.env.GENERATE_DURATION
-  };
+  const topic = process.env.GENERATE_TOPIC || '순위 모음';
+  const selectedClips = parseSelectedClips(process.env.SELECTED_CLIPS);
 
-  const result = await generateScript(input, apiKey);
+  const result = await generateRankScript({ topic, items: selectedClips }, apiKey);
 
   const output = {
     generatedAt: new Date().toISOString(),
     topic: result.topic,
-    tone: result.tone,
-    keyword: result.keyword,
-    duration: result.duration,
-    script: result.script,
-    scenes: result.scenes
+    items: [
+      { type: 'intro', narration: result.intro },
+      ...result.items.map((item) => ({ type: 'rank', ...item })),
+      { type: 'outro', narration: result.outro }
+    ]
   };
 
   const outPath = path.join(__dirname, 'latest.json');
   fs.writeFileSync(outPath, JSON.stringify(output, null, 2) + '\n', 'utf8');
 
   console.log(`대본을 생성해 ${outPath}에 저장했습니다.`);
-  console.log(output.script);
+  console.log(result.intro);
+  result.items.forEach((item) => console.log(`[${item.rank}위] ${item.title} - ${item.narration}`));
+  console.log(result.outro);
 }
 
 main().catch((err) => {
