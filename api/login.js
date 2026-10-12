@@ -3,7 +3,7 @@
 //
 // Issues a signed, time-limited session token if the password matches
 // APP_PASSWORD. The token (not the password) is what the page then sends
-// to /api/trigger-workflow and /api/workflow-status.
+// to /api/search-videos and /api/save-recommendations.
 
 const { applyCors } = require('../lib/cors');
 const { createSessionToken, constantTimeEqual } = require('../lib/auth');

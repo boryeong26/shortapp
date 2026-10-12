@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>쇼츠팩토리 | QUANTA</title>
+<title>영어회화 유튜브 큐레이션 | QUANTA</title>
 <style>
   :root {
     --bg: #05060a;
@@ -18,10 +18,6 @@
     --radius-lg: 20px;
     --radius-md: 14px;
     --radius-sm: 10px;
-    --space-1: 6px;
-    --space-2: 10px;
-    --space-3: 16px;
-    --space-4: 24px;
   }
 
   * { box-sizing: border-box; }
@@ -113,7 +109,7 @@
     box-shadow: 0 16px 40px rgba(0,0,0,0.3);
   }
 
-  .card + .card { margin-top: var(--space-4); }
+  .card + .card { margin-top: 24px; }
 
   .card-header {
     display: flex;
@@ -152,17 +148,7 @@
     font-size: 12px;
     line-height: 1.6;
     margin: 10px 0 0;
-    text-align: center;
-  }
-
-  .hint.left { text-align: left; }
-
-  .result-header { margin-bottom: 4px; }
-  .result-header h2 {
-    font-size: 15px;
-    margin: 0;
-    color: var(--text);
-    font-weight: 700;
+    text-align: left;
   }
 
   .status-line {
@@ -203,7 +189,7 @@
 
   .login-row input:focus { border-color: var(--accent); }
 
-  .login-row button, .action-btn {
+  .login-row button {
     padding: 12px 18px;
     border-radius: var(--radius-md);
     border: none;
@@ -214,55 +200,10 @@
     background: linear-gradient(120deg, var(--accent-2), var(--accent));
     white-space: nowrap;
     min-height: 44px;
-    transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+    transition: transform 0.12s ease;
   }
 
-  .login-row button:hover, .action-btn:hover:not(:disabled) { transform: translateY(-1px); }
-
-  .action-btn {
-    width: 100%;
-    margin-top: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-
-  .action-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
-
-  .action-btn.final {
-    background: var(--bg-elevated);
-    border: 1.5px solid var(--accent);
-    color: var(--text);
-    box-shadow: 0 0 0 rgba(124,92,255,0);
-  }
-
-  .action-btn.final:hover:not(:disabled) {
-    box-shadow: 0 6px 20px rgba(124,92,255,0.25);
-  }
-
-  .action-btn.secondary {
-    background: transparent;
-    border: 1px solid var(--panel-border);
-    color: var(--text-dim);
-  }
-
-  .step-num {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: rgba(5,6,10,0.25);
-    font-size: 11px;
-    flex-shrink: 0;
-  }
-
-  .action-btn.final .step-num {
-    background: var(--accent);
-    color: #05060a;
-  }
+  .login-row button:hover { transform: translateY(-1px); }
 
   .logout-link {
     color: var(--text-dim);
@@ -286,18 +227,13 @@
 
   .session-bar .card-header { flex: 1; min-width: 0; }
 
-  .field-label {
-    display: block;
-    font-size: 11px;
-    color: var(--text-dim);
-    margin-bottom: 6px;
+  .topic-row {
+    display: flex;
+    gap: 8px;
   }
 
-  .field-full { margin-bottom: 10px; }
-
-  .field-full select,
-  .field-full input {
-    width: 100%;
+  .topic-row input {
+    flex: 1;
     padding: 10px 12px;
     border-radius: var(--radius-sm);
     border: 1px solid var(--panel-border);
@@ -305,21 +241,14 @@
     color: var(--text);
     font-size: 13px;
     outline: none;
-    min-height: 42px;
+    min-height: 44px;
     transition: border-color 0.15s ease;
   }
 
-  .field-full select:focus,
-  .field-full input:focus { border-color: var(--accent); }
+  .topic-row input:focus { border-color: var(--accent); }
 
-  .topic-row {
-    display: flex;
-    gap: 8px;
-  }
-
-  .topic-row input { flex: 1; }
   .topic-row button {
-    padding: 0 16px;
+    padding: 0 18px;
     border-radius: var(--radius-sm);
     border: none;
     background: linear-gradient(120deg, var(--accent-2), var(--accent));
@@ -327,39 +256,94 @@
     font-weight: 700;
     font-size: 13px;
     cursor: pointer;
-    min-height: 42px;
+    min-height: 44px;
   }
   .topic-row button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  .candidate-grid {
+  .result-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-top: 12px;
-    max-height: 420px;
-    overflow-y: auto;
+    gap: 10px;
+    margin-top: 14px;
   }
 
-  .candidate-item {
+  .result-item {
+    display: flex;
+    gap: 10px;
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    background: #0a0d1a;
+  }
+
+  .result-item img {
+    width: 92px;
+    height: 68px;
+    object-fit: cover;
+    border-radius: 6px;
+    flex-shrink: 0;
+    background: #000;
+  }
+
+  .result-meta { flex: 1; min-width: 0; }
+
+  .result-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .result-title a { color: inherit; text-decoration: none; }
+  .result-title a:hover { color: var(--accent-2); }
+
+  .result-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  .result-comment {
+    font-size: 12px;
+    color: var(--accent-2);
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+
+  .result-comment.empty {
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  .save-btn {
+    margin-top: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--panel-border);
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 11px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  }
+
+  .save-btn.saved {
+    border-color: var(--accent-2);
+    color: var(--accent-2);
+    background: rgba(51,226,199,0.08);
+  }
+
+  .list-item {
     display: flex;
     gap: 10px;
     align-items: center;
     border: 1px solid var(--panel-border);
     border-radius: var(--radius-sm);
-    padding: 8px;
+    padding: 10px;
     background: #0a0d1a;
-    cursor: pointer;
-    transition: border-color 0.15s ease, background 0.15s ease;
+    margin-bottom: 8px;
   }
 
-  .candidate-item:hover { border-color: var(--accent); }
-
-  .candidate-item.selected {
-    border-color: var(--accent-2);
-    background: rgba(51,226,199,0.08);
-  }
-
-  .candidate-item img {
+  .list-item img {
     width: 72px;
     height: 54px;
     object-fit: cover;
@@ -368,85 +352,24 @@
     background: #000;
   }
 
-  .candidate-meta { flex: 1; min-width: 0; }
+  .list-item-meta { flex: 1; min-width: 0; }
 
-  .candidate-title {
+  .list-item-title {
     font-size: 12.5px;
     font-weight: 600;
     color: var(--text);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
   }
 
-  .candidate-sub {
-    font-size: 11px;
+  .list-item-title a { color: inherit; text-decoration: none; }
+  .list-item-title a:hover { color: var(--accent-2); }
+
+  .list-item-comment {
+    font-size: 11.5px;
     color: var(--text-dim);
     margin-top: 2px;
   }
 
-  .candidate-check {
-    width: 22px;
-    height: 22px;
-    border-radius: 6px;
-    border: 1.5px solid var(--panel-border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    flex-shrink: 0;
-    color: var(--bg);
-  }
-
-  .candidate-item.selected .candidate-check {
-    background: var(--accent-2);
-    border-color: var(--accent-2);
-  }
-
-  .selected-item {
-    position: relative;
-    border: 1px solid var(--panel-border);
-    border-left: 3px solid var(--cut-color, var(--accent-2));
-    border-radius: var(--radius-sm);
-    padding: 12px 12px 12px 14px;
-    margin-bottom: 10px;
-    background: #0a0d1a;
-  }
-
-  .selected-item:nth-of-type(5n+1) { --cut-color: #33e2c7; }
-  .selected-item:nth-of-type(5n+2) { --cut-color: #7c5cff; }
-  .selected-item:nth-of-type(5n+3) { --cut-color: #ff9d4d; }
-  .selected-item:nth-of-type(5n+4) { --cut-color: #ff5c7a; }
-  .selected-item:nth-of-type(5n+5) { --cut-color: #ffd95c; }
-
-  .selected-item-head {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-
-  .selected-item-head img {
-    width: 56px;
-    height: 42px;
-    object-fit: cover;
-    border-radius: 6px;
-    flex-shrink: 0;
-  }
-
-  .selected-item-title {
-    font-size: 12.5px;
-    font-weight: 600;
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .selected-item-remove {
+  .list-item-remove {
     background: none;
     border: none;
     color: var(--text-dim);
@@ -456,153 +379,30 @@
     flex-shrink: 0;
   }
 
-  .selected-item-row {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  .selected-item-row label {
-    font-size: 11px;
-    color: var(--text-dim);
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .selected-item-row select,
-  .selected-item-row input {
-    padding: 6px 8px;
-    border-radius: 7px;
-    border: 1px solid var(--panel-border);
-    background: #05060a;
-    color: var(--text);
-    font-size: 12px;
-    outline: none;
-    width: 64px;
-  }
-
-  .selected-item-row select { width: 56px; }
-
-  .scene-item {
-    position: relative;
-    border: 1px solid var(--panel-border);
-    border-left: 3px solid var(--cut-color, var(--accent-2));
-    border-radius: var(--radius-sm);
-    padding: 14px 14px 14px 16px;
-    margin-bottom: 10px;
-    background: #0a0d1a;
-  }
-
-  .scene-item:nth-of-type(7n+1) { --cut-color: #7c5cff; }
-  .scene-item:nth-of-type(7n+2) { --cut-color: #33e2c7; }
-  .scene-item:nth-of-type(7n+3) { --cut-color: #ff9d4d; }
-  .scene-item:nth-of-type(7n+4) { --cut-color: #ff5c7a; }
-  .scene-item:nth-of-type(7n+5) { --cut-color: #ffd95c; }
-  .scene-item:nth-of-type(7n+6) { --cut-color: #5cb8ff; }
-  .scene-item:nth-of-type(7n+7) { --cut-color: #c45cff; }
-
-  .scene-item .scene-label {
-    display: flex;
-    align-items: center;
-    font-weight: 700;
-    font-size: 13px;
-    color: var(--text);
-    margin-bottom: 10px;
-  }
-
-  .scene-item .scene-source {
-    font-size: 11px;
-    color: var(--text-dim);
-    margin-bottom: 8px;
-  }
-
-  .scene-item .scene-source a { color: var(--accent-2); }
-
-  .scene-item textarea {
+  .action-btn {
     width: 100%;
-    min-height: 64px;
-    padding: 10px;
-    border-radius: 8px;
-    border: 1px solid var(--panel-border);
-    background: #05060a;
-    color: var(--text);
-    font-size: 13px;
-    font-family: inherit;
-    line-height: 1.5;
-    resize: vertical;
-    outline: none;
-    transition: border-color 0.15s ease;
-  }
-
-  .scene-item textarea:focus { border-color: var(--accent); }
-
-  .scene-item .cut-index {
-    display: inline-flex;
-    align-items: center;
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--bg);
-    background: var(--cut-color, var(--accent-2));
-    border-radius: 999px;
-    padding: 3px 10px;
-    margin-right: 8px;
-  }
-
-  .cost-box {
-    margin-top: 18px;
-    padding: 14px 16px;
-    border-radius: var(--radius-md);
-    background: linear-gradient(135deg, rgba(124,92,255,0.1), rgba(51,226,199,0.06));
-    border: 1px solid rgba(124,92,255,0.25);
-  }
-
-  .cost-title {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--text-dim);
-    cursor: pointer;
-  }
-
-  .cost-title .cost-total-inline {
-    font-size: 16px;
-    font-weight: 800;
-    color: var(--accent-2);
-  }
-
-  .cost-lines {
-    font-size: 12px;
-    color: var(--text-dim);
-    line-height: 1.9;
     margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px dashed rgba(124,92,255,0.25);
-  }
-
-  .cost-box[open] .cost-title .chevron { transform: rotate(180deg); }
-  .cost-title .chevron { display: inline-block; transition: transform 0.15s ease; font-size: 10px; margin-left: 6px; color: var(--text-dim); }
-
-  .download-btn {
-    display: none;
-    width: 100%;
-    margin-top: 12px;
-    padding: 13px;
+    padding: 12px 18px;
     border-radius: var(--radius-md);
-    border: 1px solid var(--accent-2);
-    background: rgba(51,226,199,0.08);
-    color: var(--accent-2);
+    border: none;
     font-size: 14px;
     font-weight: 700;
     cursor: pointer;
+    color: #05060a;
+    background: linear-gradient(120deg, var(--accent-2), var(--accent));
     min-height: 44px;
-    transition: background 0.15s ease;
+    transition: transform 0.12s ease, opacity 0.12s ease;
   }
 
-  .download-btn:hover { background: rgba(51,226,199,0.16); }
+  .action-btn:hover:not(:disabled) { transform: translateY(-1px); }
+  .action-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+  .empty-note {
+    color: var(--text-dim);
+    font-size: 13px;
+    text-align: center;
+    padding: 12px 0;
+  }
 
   footer {
     text-align: center;
@@ -616,15 +416,15 @@
   <header>
     <div class="logo">
       <div class="logo-mark"></div>
-      쇼츠팩토리
+      영어회화 큐레이션
     </div>
     <div class="badge">QUANTA DESIGN</div>
   </header>
 
   <main>
     <div class="hero">
-      <h1>유튜브 CC 클립을 모아<br>순위 영상을 자동으로</h1>
-      <p>클립 검색·선택 → 해설 대본 생성 → 스토리보드 편집 → 최종 영상 제작까지 이 페이지 하나로 진행합니다.</p>
+      <h1>영어회화 유튜브 영상을<br>검색하고 모아보세요</h1>
+      <p>주제를 검색하면 AI가 각 영상에 짧은 추천 코멘트를 붙여줍니다. 마음에 드는 영상을 리스트에 저장해두세요.</p>
     </div>
 
     <div class="card" id="controlCard">
@@ -632,8 +432,8 @@
         <div class="card-header">
           <div class="card-icon">🔐</div>
           <div>
-            <h2 class="card-title">관리자 로그인</h2>
-            <p class="card-subtitle">로그인하면 클립 검색부터 영상 제작까지 이 페이지에서 바로 실행할 수 있습니다</p>
+            <h2 class="card-title">로그인</h2>
+            <p class="card-subtitle">로그인하면 검색과 리스트 저장을 할 수 있습니다</p>
           </div>
         </div>
         <div class="login-row" style="margin-top: 16px;">
@@ -645,101 +445,49 @@
       <div id="controlView" style="display: none;">
         <div class="session-bar">
           <div class="card-header" style="margin-bottom: 0;">
-            <div class="card-icon">⚙️</div>
+            <div class="card-icon">🔎</div>
             <div>
-              <h2 class="card-title">파이프라인 실행</h2>
-              <p class="card-subtitle">1 클립 검색/선택 → 2 대본 생성 → 3 스토리보드 편집 → 4 최종 영상</p>
+              <h2 class="card-title">영상 검색</h2>
+              <p class="card-subtitle">주제나 키워드로 영어회화 관련 유튜브 영상을 찾아보세요</p>
             </div>
           </div>
           <button class="logout-link" id="logoutBtn">로그아웃</button>
         </div>
 
-        <div class="field-full" style="margin-top: 18px;">
-          <label class="field-label" for="rankTopicInput">주제 (검색어)</label>
-          <div class="topic-row">
-            <input type="text" id="rankTopicInput" placeholder="예: 신기한 동물 순간, 역대급 스포츠 하이라이트">
-            <button id="searchClipsBtn">클립 검색</button>
-          </div>
+        <div class="topic-row" style="margin-top: 16px;">
+          <input type="text" id="topicInput" placeholder="예: 여행 영어회화, 비즈니스 영어, 전화 영어 표현">
+          <button id="searchBtn">검색</button>
         </div>
         <div class="status-line" id="searchStatus"></div>
-        <p class="hint left">Creative Commons(CC BY) 라이선스로 등록된 영상만 검색됩니다. 아래 목록에서 정확히 5개를 클릭해 선택하세요.</p>
 
-        <div class="candidate-grid" id="candidateGrid"></div>
-
-        <div id="selectedClipsWrap" style="display: none; margin-top: 16px;">
-          <p class="hint left" style="margin-top: 0;">선택한 5개 클립의 순위·사용 구간(초)을 확인/수정하세요.</p>
-          <div id="selectedClipsList"></div>
-        </div>
-
-        <button class="action-btn primary" id="runScriptBtn" disabled><span class="step-num">1</span>대본 생성하기 (0/5 선택됨)</button>
-        <button class="action-btn final" id="runVideoBtn"><span class="step-num">2</span>최종 영상 제작하기</button>
-        <div class="status-line" id="statusLine"></div>
-        <button class="download-btn" id="downloadBtn">⬇ 완성된 영상 다운로드 (컷별 클립 + 출처 포함 zip)</button>
+        <div class="result-list" id="resultList"></div>
       </div>
 
       <div class="error-box" id="authErrorBox"></div>
     </div>
 
-    <div class="card" id="scenesCard" style="display: none;">
-      <div class="result-header">
-        <h2>🎬 스토리보드 (인트로 → 5위~1위 → 아웃트로)</h2>
+    <div class="card" id="savedListCard">
+      <div class="card-header">
+        <div class="card-icon">⭐</div>
+        <div>
+          <h2 class="card-title">저장된 추천 리스트</h2>
+          <p class="card-subtitle" id="savedListMeta">불러오는 중...</p>
+        </div>
       </div>
-      <p class="hint left" style="margin-top: 0; margin-bottom: 16px;">각 항목의 해설 내레이션을 직접 수정할 수 있습니다. 수정 후 저장하고, 더 바꿀 게 없으면 위 "2. 최종 영상 제작하기"를 누르세요.</p>
-      <div class="error-box" id="errorBox"></div>
-      <div id="scenesList"></div>
-      <button class="action-btn primary" id="saveScenesBtn">💾 변경사항 저장</button>
-      <div class="status-line" id="scenesSaveStatus"></div>
-
-      <details class="cost-box" id="costBox" style="display: none;">
-        <summary class="cost-title">
-          <span>💰 예상 비용 (참고용) <span class="chevron">▾</span></span>
-          <span class="cost-total-inline" id="costTotal"></span>
-        </summary>
-        <div class="cost-lines" id="costLines"></div>
-        <p class="hint" style="margin-top: 8px;">실제 공개 요금(Claude Sonnet 5, ElevenLabs eleven_multilingual_v2) 기준 계산이며, 유튜브 클립 다운로드 자체는 무료입니다. 플랜/환율에 따라 실제 청구액과 다를 수 있습니다.</p>
-      </details>
+      <div class="error-box" id="listErrorBox"></div>
+      <div id="savedList" style="margin-top: 14px;"></div>
+      <div class="empty-note" id="savedEmptyNote" style="display: none;">아직 저장된 영상이 없습니다. 위에서 검색해 추가해보세요.</div>
+      <button class="action-btn" id="saveListBtn" style="display: none;">💾 변경사항 저장</button>
+      <div class="status-line" id="saveListStatus"></div>
     </div>
   </main>
 
-  <footer>쇼츠팩토리 · QUANTA UI</footer>
+  <footer>영어회화 큐레이션 · QUANTA UI</footer>
 
   <script>
-    // Vercel 배포 도메인. 이 페이지를 Vercel 도메인에서 직접 열면 상대경로(같은
-    // origin)로 호출하고, GitHub Pages 등 다른 도메인에서 열면 이 절대 URL로 호출합니다.
     const VERCEL_APP_URL = 'https://shortapp-mu.vercel.app';
     const API_BASE_URL = location.hostname.endsWith('.vercel.app') ? '' : VERCEL_APP_URL;
-
     const SESSION_KEY = 'shortapp_session_token';
-    const PENDING_KEY = 'shortapp_pending_workflow';
-    const PENDING_MAX_AGE_MS = 20 * 60 * 1000; // ignore stale markers older than 20 minutes
-    let lastKnownGeneratedAt = null;
-
-    // Progress ("실행 중...") only lived in JS variables, so refreshing the
-    // page — or GitHub Pages/Vercel just being closed and reopened while a
-    // multi-minute video render was still running — silently dropped it.
-    // Persisting a small marker in localStorage lets the page notice a
-    // workflow is still in flight and resume polling automatically.
-    function savePendingWorkflow(workflowKey, label, beforeGeneratedAt) {
-      try {
-        localStorage.setItem(PENDING_KEY, JSON.stringify({ workflowKey, label, beforeGeneratedAt, startedAt: Date.now() }));
-      } catch (e) { /* ignore */ }
-    }
-
-    function getPendingWorkflow() {
-      try {
-        const raw = localStorage.getItem(PENDING_KEY);
-        if (!raw) return null;
-        const pending = JSON.parse(raw);
-        if (!pending || Date.now() - pending.startedAt > PENDING_MAX_AGE_MS) return null;
-        return pending;
-      } catch (e) {
-        return null;
-      }
-    }
-
-    function clearPendingWorkflow() {
-      try { localStorage.removeItem(PENDING_KEY); } catch (e) { /* ignore */ }
-    }
 
     const loginView = document.getElementById('loginView');
     const controlView = document.getElementById('controlView');
@@ -747,19 +495,17 @@
     const loginBtn = document.getElementById('loginBtn');
     const logoutBtn = document.getElementById('logoutBtn');
     const authErrorBox = document.getElementById('authErrorBox');
-    const runScriptBtn = document.getElementById('runScriptBtn');
-    const runVideoBtn = document.getElementById('runVideoBtn');
-    const statusLine = document.getElementById('statusLine');
-    const downloadBtn = document.getElementById('downloadBtn');
+    const topicInput = document.getElementById('topicInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const searchStatus = document.getElementById('searchStatus');
+    const resultList = document.getElementById('resultList');
 
     function getSessionToken() {
       try { return sessionStorage.getItem(SESSION_KEY); } catch (e) { return null; }
     }
-
     function setSessionToken(token) {
       try { sessionStorage.setItem(SESSION_KEY, token); } catch (e) { /* ignore */ }
     }
-
     function clearSessionToken() {
       try { sessionStorage.removeItem(SESSION_KEY); } catch (e) { /* ignore */ }
     }
@@ -771,13 +517,8 @@
 
     function renderAuthState() {
       const token = getSessionToken();
-      if (token) {
-        loginView.style.display = 'none';
-        controlView.style.display = 'block';
-      } else {
-        loginView.style.display = 'block';
-        controlView.style.display = 'none';
-      }
+      loginView.style.display = token ? 'none' : 'block';
+      controlView.style.display = token ? 'block' : 'none';
     }
 
     async function login() {
@@ -795,13 +536,11 @@
           body: JSON.stringify({ password })
         });
         const data = await res.json();
-
         if (!res.ok) throw new Error(data.error || '로그인에 실패했습니다.');
 
         setSessionToken(data.token);
         passwordInput.value = '';
         renderAuthState();
-        resumePendingWorkflowIfAny();
       } catch (err) {
         showAuthError(err.message || '로그인 중 오류가 발생했습니다.');
       } finally {
@@ -812,154 +551,14 @@
 
     function logout() {
       clearSessionToken();
-      statusLine.textContent = '';
       renderAuthState();
     }
 
-    async function triggerWorkflow(workflowKey, label, options = {}) {
-      const token = getSessionToken();
-      if (!token) { renderAuthState(); return; }
+    loginBtn.addEventListener('click', login);
+    passwordInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
+    logoutBtn.addEventListener('click', logout);
 
-      runScriptBtn.disabled = true;
-      runVideoBtn.disabled = true;
-      statusLine.textContent = `${label} 실행 요청 중...`;
-
-      const beforeGeneratedAt = lastKnownGeneratedAt;
-
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/trigger-workflow`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token, workflow: workflowKey, ...options })
-        });
-        const data = await res.json();
-
-        if (!res.ok) {
-          if (res.status === 401) { clearSessionToken(); renderAuthState(); }
-          throw new Error(data.error || '실행 요청이 실패했습니다.');
-        }
-
-        statusLine.textContent = `${label} 실행됨. 진행 상황 확인 중...`;
-        savePendingWorkflow(workflowKey, label, beforeGeneratedAt);
-        pollWorkflowStatus(workflowKey, label, beforeGeneratedAt);
-      } catch (err) {
-        statusLine.textContent = `오류: ${err.message}`;
-        updateRunScriptBtnState();
-        runVideoBtn.disabled = false;
-      }
-    }
-
-    // After the Actions run finishes, GitHub still needs a moment to
-    // redeploy (Vercel/Pages rebuild on the push), so scripts/latest.json
-    // fetched right away can still be the pre-generation file. Poll it
-    // until generatedAt actually changes instead of a single fixed delay,
-    // so the "스토리보드" card reliably shows the new items without the
-    // user needing to manually refresh.
-    async function waitForFreshScript(beforeGeneratedAt) {
-      const maxAttempts = 18; // ~90s at 5s interval
-      for (let i = 0; i < maxAttempts; i++) {
-        statusLine.textContent = `대본 생성 완료! 페이지 반영 대기 중... (${i + 1}/${maxAttempts})`;
-        await new Promise((resolve) => setTimeout(resolve, 5000));
-        try {
-          const res = await fetch(`scripts/latest.json?t=${Date.now()}`, { cache: 'no-store' });
-          if (res.ok) {
-            const data = await res.json();
-            if (data && data.generatedAt && data.generatedAt !== beforeGeneratedAt) {
-              await loadLatestScript();
-              statusLine.textContent = '대본 생성 완료! 아래에서 내레이션을 편집할 수 있습니다.';
-              return;
-            }
-          }
-        } catch (err) {
-          // ignore and retry
-        }
-      }
-      statusLine.textContent = '대본 생성은 완료됐지만 페이지 반영이 지연되고 있습니다. 잠시 후 새로고침해주세요.';
-      loadLatestScript();
-    }
-
-    async function pollWorkflowStatus(workflowKey, label, beforeGeneratedAt) {
-      const token = getSessionToken();
-      if (!token) return;
-
-      const maxAttempts = 60; // ~10 minutes at 10s interval
-      let attempts = 0;
-
-      const tick = async () => {
-        attempts += 1;
-        try {
-          const res = await fetch(`${API_BASE_URL}/api/workflow-status?token=${encodeURIComponent(token)}&workflow=${workflowKey}`);
-          const data = await res.json();
-
-          if (!res.ok) {
-            if (res.status === 401) { clearSessionToken(); renderAuthState(); }
-            throw new Error(data.error || '상태 조회 실패');
-          }
-
-          if (data.status === 'completed') {
-            const ok = data.conclusion === 'success';
-            updateRunScriptBtnState();
-            runVideoBtn.disabled = false;
-            clearPendingWorkflow();
-            if (ok && workflowKey === 'script') {
-              waitForFreshScript(beforeGeneratedAt);
-            } else {
-              statusLine.textContent = ok
-                ? `${label} 완료! 결과를 보려면 새로고침하세요.`
-                : `${label} 실패 (${data.conclusion}). Actions 탭에서 로그를 확인하세요.`;
-            }
-            if (ok && workflowKey === 'video') downloadBtn.style.display = 'block';
-            return;
-          }
-
-          statusLine.textContent = `${label} 진행 중... (${data.status || '대기'})`;
-        } catch (err) {
-          statusLine.textContent = `상태 확인 실패: ${err.message}`;
-        }
-
-        if (attempts < maxAttempts) {
-          setTimeout(tick, 10000);
-        } else {
-          statusLine.textContent = `${label} 상태 확인 시간 초과. Actions 탭에서 직접 확인하세요.`;
-          updateRunScriptBtnState();
-          runVideoBtn.disabled = false;
-          clearPendingWorkflow();
-        }
-      };
-
-      runScriptBtn.disabled = true;
-      runVideoBtn.disabled = true;
-
-      // First status check shortly after dispatch, since GitHub takes a
-      // moment to register the queued run.
-      setTimeout(tick, 4000);
-    }
-
-    // Runs at page load (and right after login) so a workflow that's still
-    // running when the page is refreshed/reopened picks its status polling
-    // back up automatically instead of the progress line just going blank.
-    function resumePendingWorkflowIfAny() {
-      const pending = getPendingWorkflow();
-      if (!pending || !getSessionToken()) return;
-
-      statusLine.textContent = `${pending.label} 진행 상황 이어서 확인 중...`;
-      pollWorkflowStatus(pending.workflowKey, pending.label, pending.beforeGeneratedAt);
-    }
-
-    // --- Clip search + selection ---
-
-    const RANK_COUNT = 5;
-    const DEFAULT_CLIP_SECONDS = 10;
-
-    const searchClipsBtn = document.getElementById('searchClipsBtn');
-    const rankTopicInput = document.getElementById('rankTopicInput');
-    const searchStatus = document.getElementById('searchStatus');
-    const candidateGrid = document.getElementById('candidateGrid');
-    const selectedClipsWrap = document.getElementById('selectedClipsWrap');
-    const selectedClipsList = document.getElementById('selectedClipsList');
-
-    let lastCandidates = [];
-    const selectedByVideoId = new Map(); // videoId -> clip object (rank assigned by insertion order)
+    // --- Search ---
 
     function formatDuration(seconds) {
       if (!seconds) return '';
@@ -968,167 +567,90 @@
       return `${m}:${String(s).padStart(2, '0')}`;
     }
 
-    function updateRunScriptBtnState() {
-      const count = selectedByVideoId.size;
-      runScriptBtn.textContent = '';
-      const stepNum = document.createElement('span');
-      stepNum.className = 'step-num';
-      stepNum.textContent = '1';
-      runScriptBtn.appendChild(stepNum);
-      runScriptBtn.appendChild(document.createTextNode(`대본 생성하기 (${count}/${RANK_COUNT} 선택됨)`));
-      runScriptBtn.disabled = count !== RANK_COUNT;
+    function isSaved(videoId) {
+      return savedItems.some((it) => it.videoId === videoId);
     }
 
-    function renderCandidates() {
-      candidateGrid.innerHTML = '';
-      lastCandidates.forEach((c) => {
+    let lastCandidates = [];
+
+    function renderResults(candidates) {
+      lastCandidates = candidates;
+      resultList.innerHTML = '';
+      candidates.forEach((c) => {
         const item = document.createElement('div');
-        item.className = 'candidate-item' + (selectedByVideoId.has(c.videoId) ? ' selected' : '');
+        item.className = 'result-item';
 
         const img = document.createElement('img');
         img.src = c.thumbnail || '';
-        img.alt = '';
         item.appendChild(img);
 
         const meta = document.createElement('div');
-        meta.className = 'candidate-meta';
+        meta.className = 'result-meta';
+
         const title = document.createElement('div');
-        title.className = 'candidate-title';
-        title.textContent = c.title;
+        title.className = 'result-title';
+        const titleLink = document.createElement('a');
+        titleLink.href = c.url;
+        titleLink.target = '_blank';
+        titleLink.rel = 'noopener';
+        titleLink.textContent = c.title;
+        title.appendChild(titleLink);
         meta.appendChild(title);
+
         const sub = document.createElement('div');
-        sub.className = 'candidate-sub';
+        sub.className = 'result-sub';
         sub.textContent = `${c.channelTitle} · ${formatDuration(c.durationSeconds)}`;
         meta.appendChild(sub);
+
+        const comment = document.createElement('div');
+        comment.className = c.comment ? 'result-comment' : 'result-comment empty';
+        comment.textContent = c.comment || 'AI 추천 코멘트를 생성하지 못했습니다.';
+        meta.appendChild(comment);
+
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'save-btn' + (isSaved(c.videoId) ? ' saved' : '');
+        saveBtn.textContent = isSaved(c.videoId) ? '✓ 리스트에 저장됨' : '+ 리스트에 추가';
+        saveBtn.addEventListener('click', () => {
+          if (isSaved(c.videoId)) {
+            savedItems = savedItems.filter((it) => it.videoId !== c.videoId);
+          } else {
+            savedItems.push({
+              videoId: c.videoId,
+              title: c.title,
+              channelTitle: c.channelTitle,
+              thumbnail: c.thumbnail,
+              durationSeconds: c.durationSeconds,
+              url: c.url,
+              comment: c.comment
+            });
+          }
+          renderSavedList();
+          saveBtn.className = 'save-btn' + (isSaved(c.videoId) ? ' saved' : '');
+          saveBtn.textContent = isSaved(c.videoId) ? '✓ 리스트에 저장됨' : '+ 리스트에 추가';
+        });
+        meta.appendChild(saveBtn);
+
         item.appendChild(meta);
-
-        const check = document.createElement('div');
-        check.className = 'candidate-check';
-        check.textContent = selectedByVideoId.has(c.videoId) ? '✓' : '';
-        item.appendChild(check);
-
-        item.addEventListener('click', () => toggleCandidate(c));
-        candidateGrid.appendChild(item);
+        resultList.appendChild(item);
       });
     }
 
-    function toggleCandidate(c) {
-      if (selectedByVideoId.has(c.videoId)) {
-        selectedByVideoId.delete(c.videoId);
-      } else {
-        if (selectedByVideoId.size >= RANK_COUNT) {
-          searchStatus.textContent = `최대 ${RANK_COUNT}개까지만 선택할 수 있습니다. 다른 클립을 선택하려면 먼저 하나를 해제하세요.`;
-          return;
-        }
-        const maxDuration = Math.min(c.durationSeconds || DEFAULT_CLIP_SECONDS, 60);
-        const usedRanks = new Set(Array.from(selectedByVideoId.values()).map((v) => v.rank));
-        let nextRank = RANK_COUNT;
-        while (usedRanks.has(nextRank) && nextRank > 1) nextRank -= 1;
-        selectedByVideoId.set(c.videoId, {
-          videoId: c.videoId,
-          title: c.title,
-          channelTitle: c.channelTitle,
-          channelId: c.channelId,
-          url: c.url,
-          description: c.description,
-          thumbnail: c.thumbnail,
-          start: 0,
-          end: Math.min(DEFAULT_CLIP_SECONDS, maxDuration),
-          rank: nextRank
-        });
-      }
-      renderCandidates();
-      renderSelectedClips();
-    }
-
-    function renderSelectedClips() {
-      const clips = Array.from(selectedByVideoId.values());
-      selectedClipsWrap.style.display = clips.length > 0 ? 'block' : 'none';
-      selectedClipsList.innerHTML = '';
-
-      clips.forEach((clip, i) => {
-        const item = document.createElement('div');
-        item.className = 'selected-item';
-
-        const head = document.createElement('div');
-        head.className = 'selected-item-head';
-        const img = document.createElement('img');
-        img.src = clip.thumbnail || '';
-        head.appendChild(img);
-        const title = document.createElement('div');
-        title.className = 'selected-item-title';
-        title.textContent = clip.title;
-        head.appendChild(title);
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'selected-item-remove';
-        removeBtn.textContent = '✕';
-        removeBtn.addEventListener('click', () => {
-          selectedByVideoId.delete(clip.videoId);
-          renderCandidates();
-          renderSelectedClips();
-        });
-        head.appendChild(removeBtn);
-        item.appendChild(head);
-
-        const row = document.createElement('div');
-        row.className = 'selected-item-row';
-
-        const rankLabel = document.createElement('label');
-        rankLabel.textContent = '순위';
-        const rankSelect = document.createElement('select');
-        for (let r = 1; r <= RANK_COUNT; r++) {
-          const opt = document.createElement('option');
-          opt.value = r;
-          opt.textContent = `${r}위`;
-          if (r === clip.rank) opt.selected = true;
-          rankSelect.appendChild(opt);
-        }
-        rankSelect.addEventListener('change', () => { clip.rank = Number(rankSelect.value); });
-        rankLabel.appendChild(rankSelect);
-        row.appendChild(rankLabel);
-
-        const startLabel = document.createElement('label');
-        startLabel.textContent = '시작(초)';
-        const startInput = document.createElement('input');
-        startInput.type = 'number';
-        startInput.min = '0';
-        startInput.value = clip.start;
-        startInput.addEventListener('input', () => { clip.start = Number(startInput.value) || 0; });
-        startLabel.appendChild(startInput);
-        row.appendChild(startLabel);
-
-        const endLabel = document.createElement('label');
-        endLabel.textContent = '끝(초)';
-        const endInput = document.createElement('input');
-        endInput.type = 'number';
-        endInput.min = '1';
-        endInput.value = clip.end;
-        endInput.addEventListener('input', () => { clip.end = Number(endInput.value) || 0; });
-        endLabel.appendChild(endInput);
-        row.appendChild(endLabel);
-
-        item.appendChild(row);
-        selectedClipsList.appendChild(item);
-      });
-
-      updateRunScriptBtnState();
-    }
-
-    async function searchClips() {
+    async function search() {
       const token = getSessionToken();
       if (!token) { renderAuthState(); return; }
 
-      const query = rankTopicInput.value.trim();
+      const query = topicInput.value.trim();
       if (!query) {
         searchStatus.textContent = '검색어를 입력하세요.';
         return;
       }
 
-      searchClipsBtn.disabled = true;
-      searchStatus.textContent = '검색 중...';
+      searchBtn.disabled = true;
+      searchStatus.textContent = '검색 중... (AI 추천 코멘트 생성까지 몇 초 더 걸릴 수 있어요)';
+      resultList.innerHTML = '';
 
       try {
-        const res = await fetch(`${API_BASE_URL}/api/search-youtube-clips`, {
+        const res = await fetch(`${API_BASE_URL}/api/search-videos`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token, query })
@@ -1140,242 +662,92 @@
           throw new Error(data.error || '검색에 실패했습니다.');
         }
 
-        lastCandidates = data.candidates || [];
-        searchStatus.textContent = lastCandidates.length > 0
-          ? `${lastCandidates.length}개 CC 라이선스 영상을 찾았습니다. 5개를 선택하세요.`
-          : 'CC 라이선스 영상을 찾지 못했습니다. 다른 검색어로 시도해보세요.';
-        renderCandidates();
+        const candidates = data.candidates || [];
+        searchStatus.textContent = candidates.length > 0
+          ? `${candidates.length}개 영상을 찾았습니다.`
+          : '검색 결과가 없습니다. 다른 검색어로 시도해보세요.';
+        renderResults(candidates);
       } catch (err) {
         searchStatus.textContent = `검색 실패: ${err.message}`;
       } finally {
-        searchClipsBtn.disabled = false;
+        searchBtn.disabled = false;
       }
     }
 
-    searchClipsBtn.addEventListener('click', searchClips);
-    rankTopicInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') searchClips(); });
+    searchBtn.addEventListener('click', search);
+    topicInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') search(); });
 
-    loginBtn.addEventListener('click', login);
-    passwordInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
-    logoutBtn.addEventListener('click', logout);
+    // --- Saved list ---
 
-    runScriptBtn.addEventListener('click', () => {
-      const clips = Array.from(selectedByVideoId.values());
-      if (clips.length !== RANK_COUNT) return;
-      const ranks = new Set(clips.map((c) => c.rank));
-      if (ranks.size !== RANK_COUNT) {
-        statusLine.textContent = '순위가 중복되지 않게 1~5위를 각각 한 번씩 지정하세요.';
-        return;
-      }
-      if (clips.some((c) => !(c.end > c.start))) {
-        statusLine.textContent = '모든 클립의 끝(초)은 시작(초)보다 커야 합니다.';
-        return;
-      }
-      triggerWorkflow('script', '대본 생성', {
-        topic: rankTopicInput.value.trim(),
-        selectedClips: clips.map(({ videoId, rank, title, channelTitle, channelId, url, description, start, end }) =>
-          ({ videoId, rank, title, channelTitle, channelId, url, description, start, end }))
-      });
-    });
-    runVideoBtn.addEventListener('click', () => triggerWorkflow('video', '영상 제작'));
+    const savedListEl = document.getElementById('savedList');
+    const savedEmptyNote = document.getElementById('savedEmptyNote');
+    const savedListMeta = document.getElementById('savedListMeta');
+    const saveListBtn = document.getElementById('saveListBtn');
+    const saveListStatus = document.getElementById('saveListStatus');
+    const listErrorBox = document.getElementById('listErrorBox');
 
-    downloadBtn.addEventListener('click', async () => {
-      const token = getSessionToken();
-      if (!token) { renderAuthState(); return; }
+    let savedItems = [];
+    let savedTopic = null;
 
-      downloadBtn.disabled = true;
-      downloadBtn.textContent = '다운로드 링크 가져오는 중...';
+    function renderSavedList() {
+      savedListEl.innerHTML = '';
+      savedEmptyNote.style.display = savedItems.length === 0 ? 'block' : 'none';
+      saveListBtn.style.display = getSessionToken() ? 'block' : 'none';
 
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/artifact-download?token=${encodeURIComponent(token)}&workflow=video`);
-        const data = await res.json();
+      savedItems.forEach((it) => {
+        const row = document.createElement('div');
+        row.className = 'list-item';
 
-        if (!res.ok) {
-          if (res.status === 401) { clearSessionToken(); renderAuthState(); }
-          throw new Error(data.error || '다운로드 링크를 가져오지 못했습니다.');
+        const img = document.createElement('img');
+        img.src = it.thumbnail || '';
+        row.appendChild(img);
+
+        const meta = document.createElement('div');
+        meta.className = 'list-item-meta';
+        const title = document.createElement('div');
+        title.className = 'list-item-title';
+        const titleLink = document.createElement('a');
+        titleLink.href = it.url;
+        titleLink.target = '_blank';
+        titleLink.rel = 'noopener';
+        titleLink.textContent = it.title;
+        title.appendChild(titleLink);
+        meta.appendChild(title);
+
+        if (it.comment) {
+          const comment = document.createElement('div');
+          comment.className = 'list-item-comment';
+          comment.textContent = it.comment;
+          meta.appendChild(comment);
         }
+        row.appendChild(meta);
 
-        const link = document.createElement('a');
-        link.href = data.downloadUrl;
-        link.download = `${data.name || 'shorts-video'}.zip`;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-      } catch (err) {
-        statusLine.textContent = `다운로드 실패: ${err.message}`;
-      } finally {
-        downloadBtn.disabled = false;
-        downloadBtn.textContent = '⬇ 완성된 영상 다운로드 (컷별 클립 + 출처 포함 zip)';
-      }
-    });
-
-    renderAuthState();
-    resumePendingWorkflowIfAny();
-    updateRunScriptBtnState();
-
-    const errorBox = document.getElementById('errorBox');
-
-    const scenesCard = document.getElementById('scenesCard');
-    const scenesList = document.getElementById('scenesList');
-    const saveScenesBtn = document.getElementById('saveScenesBtn');
-    const scenesSaveStatus = document.getElementById('scenesSaveStatus');
-    let currentItemsMeta = null;
-
-    // Published rates (checked live, not guessed):
-    // - Claude Sonnet 5: $2/1M input tokens, $10/1M output tokens
-    // - ElevenLabs eleven_multilingual_v2: $0.10 / 1,000 characters
-    // Downloading the YouTube source clips themselves (yt-dlp) is free —
-    // there's no per-second video-generation cost like the old AI
-    // background pipeline had.
-    const PRICING = {
-      claudeInputPerMTokens: 2,
-      claudeOutputPerMTokens: 10,
-      elevenLabsPer1000Chars: 0.10
-    };
-    const USD_TO_KRW = 1450; // approximate, for display only
-
-    function estimateCost(items) {
-      const totalChars = items.reduce((sum, it) => sum + (it.narration || '').length, 0);
-
-      const scriptInputTokens = 500;
-      const scriptOutputTokens = 900;
-      const scriptCost = (scriptInputTokens * PRICING.claudeInputPerMTokens
-        + scriptOutputTokens * PRICING.claudeOutputPerMTokens) / 1e6;
-
-      const ttsCost = (totalChars / 1000) * PRICING.elevenLabsPer1000Chars;
-
-      return { scriptCost, ttsCost, total: scriptCost + ttsCost };
-    }
-
-    function autoGrowTextarea(el) {
-      el.style.height = 'auto';
-      el.style.height = `${el.scrollHeight}px`;
-    }
-
-    function formatUsd(n) {
-      return `$${n.toFixed(n < 0.01 ? 4 : 2)}`;
-    }
-
-    function updateCostEstimate() {
-      const costBox = document.getElementById('costBox');
-      const costLines = document.getElementById('costLines');
-      const costTotal = document.getElementById('costTotal');
-      const items = scenesList.querySelectorAll('.scene-item');
-
-      if (items.length === 0) {
-        costBox.style.display = 'none';
-        return;
-      }
-
-      const narrations = Array.from(items).map((item) => ({
-        narration: item.querySelector('textarea').value
-      }));
-
-      const cost = estimateCost(narrations);
-      costLines.innerHTML = '';
-      [
-        ['대본 생성 (Claude Sonnet 5)', cost.scriptCost],
-        [`음성 합성 (ElevenLabs, ${narrations.reduce((s, it) => s + it.narration.length, 0)}자)`, cost.ttsCost]
-      ].forEach(([label, value]) => {
-        const line = document.createElement('div');
-        line.textContent = `${label}: ${formatUsd(value)}`;
-        costLines.appendChild(line);
-      });
-
-      const krw = Math.round(cost.total * USD_TO_KRW);
-      costTotal.textContent = `총 약 ${formatUsd(cost.total)} (₩${krw.toLocaleString('ko-KR')})`;
-      costBox.style.display = 'block';
-    }
-
-    function itemLabel(item) {
-      if (item.type === 'intro') return '인트로';
-      if (item.type === 'outro') return '아웃트로';
-      return `${item.rank}위`;
-    }
-
-    function renderScenes(data) {
-      scenesList.textContent = '';
-
-      if (!Array.isArray(data.items) || data.items.length === 0) {
-        scenesCard.style.display = 'none';
-        currentItemsMeta = null;
-        return;
-      }
-
-      currentItemsMeta = {
-        topic: data.topic,
-        generatedAt: data.generatedAt,
-        items: data.items
-      };
-
-      data.items.forEach((it, i) => {
-        const item = document.createElement('div');
-        item.className = 'scene-item';
-
-        const labelEl = document.createElement('div');
-        labelEl.className = 'scene-label';
-        const indexBadge = document.createElement('span');
-        indexBadge.className = 'cut-index';
-        indexBadge.textContent = itemLabel(it);
-        labelEl.appendChild(indexBadge);
-        if (it.type === 'rank') labelEl.appendChild(document.createTextNode(it.title || ''));
-        item.appendChild(labelEl);
-
-        if (it.type === 'rank' && it.url) {
-          const source = document.createElement('div');
-          source.className = 'scene-source';
-          const link = document.createElement('a');
-          link.href = it.url;
-          link.target = '_blank';
-          link.rel = 'noopener';
-          link.textContent = `출처: ${it.channelTitle || it.url}`;
-          source.appendChild(link);
-          source.appendChild(document.createTextNode(` · ${it.start}s~${it.end}s 구간 사용`));
-          item.appendChild(source);
-        }
-
-        const textarea = document.createElement('textarea');
-        textarea.dataset.field = 'narration';
-        textarea.value = it.narration || '';
-        textarea.rows = 1;
-        textarea.addEventListener('input', () => {
-          autoGrowTextarea(textarea);
-          updateCostEstimate();
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'list-item-remove';
+        removeBtn.textContent = '✕';
+        removeBtn.addEventListener('click', () => {
+          savedItems = savedItems.filter((x) => x.videoId !== it.videoId);
+          renderSavedList();
+          renderResults(lastCandidates);
         });
-        item.appendChild(textarea);
+        row.appendChild(removeBtn);
 
-        scenesList.appendChild(item);
+        savedListEl.appendChild(row);
       });
-
-      scenesCard.style.display = 'block';
-      updateCostEstimate();
-      scenesList.querySelectorAll('textarea').forEach(autoGrowTextarea);
     }
 
-    async function saveScenes() {
+    async function saveList() {
       const token = getSessionToken();
       if (!token) { renderAuthState(); return; }
-      if (!currentItemsMeta) return;
 
-      const domItems = scenesList.querySelectorAll('.scene-item');
-      const items = currentItemsMeta.items.map((original, i) => ({
-        ...original,
-        narration: domItems[i].querySelector('textarea').value.trim()
-      }));
-
-      saveScenesBtn.disabled = true;
-      scenesSaveStatus.textContent = '저장 중...';
+      saveListBtn.disabled = true;
+      saveListStatus.textContent = '저장 중...';
 
       try {
-        const res = await fetch(`${API_BASE_URL}/api/save-scenes`, {
+        const res = await fetch(`${API_BASE_URL}/api/save-recommendations`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            token,
-            topic: currentItemsMeta.topic,
-            generatedAt: currentItemsMeta.generatedAt,
-            items
-          })
+          body: JSON.stringify({ token, topic: savedTopic || topicInput.value.trim(), items: savedItems })
         });
         const data = await res.json();
 
@@ -1384,38 +756,39 @@
           throw new Error(data.error || '저장에 실패했습니다.');
         }
 
-        scenesSaveStatus.textContent = '저장 완료! "2. 최종 영상 제작하기"를 누르면 이 내용으로 만들어집니다. (GitHub Pages 반영에는 1분 정도 걸릴 수 있어 미리보기는 잠시 후 새로고침해야 갱신됩니다.)';
+        saveListStatus.textContent = '저장 완료! (GitHub Pages 반영에는 1분 정도 걸릴 수 있어요.)';
       } catch (err) {
-        scenesSaveStatus.textContent = `저장 실패: ${err.message}`;
+        saveListStatus.textContent = `저장 실패: ${err.message}`;
       } finally {
-        saveScenesBtn.disabled = false;
+        saveListBtn.disabled = false;
       }
     }
 
-    saveScenesBtn.addEventListener('click', saveScenes);
+    saveListBtn.addEventListener('click', saveList);
 
-    async function loadLatestScript() {
+    async function loadSavedList() {
       try {
-        // Cache-bust so GitHub Pages / browser caching doesn't serve a stale file.
-        const res = await fetch(`scripts/latest.json?t=${Date.now()}`, { cache: 'no-store' });
-        if (!res.ok) throw new Error(`latest.json 요청 실패 (HTTP ${res.status})`);
+        const res = await fetch(`data/recommendations.json?t=${Date.now()}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`recommendations.json 요청 실패 (HTTP ${res.status})`);
         const data = await res.json();
 
-        if (!data || !Array.isArray(data.items)) {
-          renderScenes({});
-          return;
-        }
-
-        lastKnownGeneratedAt = data.generatedAt || null;
-        renderScenes(data);
+        savedItems = Array.isArray(data.items) ? data.items : [];
+        savedTopic = data.topic || null;
+        const updatedDate = data.updatedAt ? new Date(data.updatedAt).toLocaleString('ko-KR') : null;
+        savedListMeta.textContent = updatedDate
+          ? `${savedItems.length}개 저장됨 · ${updatedDate} 업데이트`
+          : `${savedItems.length}개 저장됨`;
+        renderSavedList();
       } catch (err) {
-        errorBox.textContent = `대본을 불러오지 못했습니다: ${err.message}`;
-        errorBox.style.display = 'block';
-        renderScenes({});
+        listErrorBox.textContent = `리스트를 불러오지 못했습니다: ${err.message}`;
+        listErrorBox.style.display = 'block';
+        savedListMeta.textContent = '';
+        renderSavedList();
       }
     }
 
-    loadLatestScript();
+    renderAuthState();
+    loadSavedList();
   </script>
 </body>
 </html>

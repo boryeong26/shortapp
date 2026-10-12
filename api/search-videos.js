@@ -1,13 +1,16 @@
-// POST /api/search-youtube-clips
+// POST /api/search-videos
 // Body: { token, query }
-// Response: { candidates: [{ videoId, title, channelTitle, thumbnail, durationSeconds, url, ... }] }
+// Response: { candidates: [{ videoId, title, channelTitle, thumbnail, durationSeconds, url, comment }] }
 //
-// Lets the logged-in page search Creative Commons-licensed YouTube videos
-// to pick clips from, before any script/video generation runs.
+// Searches YouTube for videos matching the query, then asks Claude for a
+// short Korean recommendation comment per result (one Claude call for
+// the whole page of results). Nothing is downloaded — this only ever
+// links out to YouTube.
 
 const { applyCors } = require('../lib/cors');
 const { verifySessionToken } = require('../lib/auth');
-const { searchCreativeCommonsClips } = require('../lib/youtubeSearch');
+const { searchVideos } = require('../lib/youtubeSearch');
+const { generateCommentary } = require('../lib/recommendCommentary');
 
 module.exports = async (req, res) => {
   if (applyCors(req, res)) return;
@@ -18,6 +21,7 @@ module.exports = async (req, res) => {
   }
 
   const authSecret = process.env.AUTH_SECRET;
+  const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
   if (!authSecret) {
     res.status(500).json({ error: '서버에 AUTH_SECRET이 설정되어 있지 않습니다.' });
     return;
@@ -41,10 +45,25 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const candidates = await searchCreativeCommonsClips(query);
-    res.status(200).json({ candidates });
+    const candidates = await searchVideos(query);
+
+    let commentary = new Map();
+    if (anthropicApiKey && candidates.length > 0) {
+      try {
+        commentary = await generateCommentary(query, candidates, anthropicApiKey);
+      } catch (err) {
+        console.warn('generateCommentary failed, returning results without AI comments:', err.message);
+      }
+    }
+
+    const withComments = candidates.map((c) => ({
+      ...c,
+      comment: commentary.get(c.videoId) || null
+    }));
+
+    res.status(200).json({ candidates: withComments });
   } catch (err) {
-    console.error('search-youtube-clips error:', err);
+    console.error('search-videos error:', err);
     res.status(502).json({ error: err.message || 'YouTube 검색 중 오류가 발생했습니다.' });
   }
 };
