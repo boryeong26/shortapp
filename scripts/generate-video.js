@@ -1,30 +1,30 @@
 // Node script run by the "영상 제작" GitHub Actions workflow.
 //
 // Reads scripts/latest.json (produced by generate-script.js, and
-// editable on the page before this runs via api/save-scenes.js). Each
-// scene has its own narration (for TTS) and a visual description of
-// what that narration should actually show on screen — used as the
-// Kling AI video-generation prompt (falls back to a keyword-matched
-// color palette if Kling is unavailable). For each scene this renders a
-// fully standalone cut clip — its own background, audio,
-// and burned-in subtitle — to output/cuts/, so cuts can be individually
-// reviewed/re-cut in an external editor (e.g. CapCut). The final
-// output/shorts.mp4 is just those cuts concatenated, so it already
-// reflects whatever was last edited on the page.
+// editable on the page before this runs via api/save-scenes.js): an
+// intro, 5 ranked items each tied to a real Creative Commons-licensed
+// YouTube clip (videoId + start/end trim range) chosen on the page, and
+// an outro. For each item this downloads/trims the real clip (yt-dlp),
+// synthesizes narration (ElevenLabs), burns subtitles, and renders a
+// standalone cut to output/cuts/ so cuts can be individually reviewed or
+// re-cut in an external editor. The final output/shorts.mp4 is just
+// those cuts concatenated. output/credits.txt lists the required CC BY
+// attribution for every source clip used — paste it into the YouTube
+// description before publishing.
 
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
-const { parseScriptSegments } = require('../lib/scriptSegments');
 const { synthesizeSpeech } = require('../lib/tts');
-const { generateSceneBackgroundImage, WIDTH, HEIGHT } = require('../lib/background');
-const { generateSceneClipWithRetry, DEFAULT_CLIP_DURATION } = require('../lib/videoGen');
+const { generateTitleCardImage } = require('../lib/titleCard');
 const { buildAssSubtitles, buildSceneCues } = require('../lib/subtitles');
 
 const BUILD_DIR = path.join(__dirname, '..', 'build');
 const OUTPUT_DIR = path.join(__dirname, '..', 'output');
 const CUTS_DIR = path.join(OUTPUT_DIR, 'cuts');
+const WIDTH = 1080;
+const HEIGHT = 1920;
 const FPS = 25;
 
 function run(cmd, args) {
@@ -79,108 +79,81 @@ function muxWithSubtitles(backgroundVideoPath, audioPath, assPath, outputPath) {
   ]);
 }
 
-function buildKlingPrompt(scene, topic) {
-  const description = scene.visual || topic || '추상적인 배경';
-  return `${description}. 부드럽고 느린 카메라 움직임, 자막이나 글자 없음, 사람 얼굴 클로즈업 없음, 자연스럽게 반복 재생 가능한 루프 영상.`;
+// Downloads just the [start, end) seconds of a YouTube video (not the
+// whole thing) via yt-dlp's --download-sections, since that's all a
+// given rank item needs.
+function downloadYoutubeClip(videoId, start, end, outPath) {
+  const url = `https://www.youtube.com/watch?v=${videoId}`;
+  run('yt-dlp', [
+    '-f', 'bv*[height<=1080]+ba/b[height<=1080]/b',
+    '--download-sections', `*${start}-${end}`,
+    '--force-keyframes-at-cuts',
+    '--merge-output-format', 'mp4',
+    '-o', outPath,
+    url
+  ]);
 }
 
-// Renders a single gradient-fallback clip of the given duration, normalized
-// to the same codec/scale/fps as Kling clips so it can sit in the same
-// concat list without a re-encode mismatch.
-async function renderGradientClip(topic, visual, seedSuffix, durationSeconds, outPath) {
-  const backgroundImagePath = `${outPath}.png`;
-  const backgroundImage = await generateSceneBackgroundImage(topic, visual, seedSuffix);
-  fs.writeFileSync(backgroundImagePath, backgroundImage);
-  renderBackgroundVideo(backgroundImagePath, durationSeconds, outPath);
+// Scales/crops a raw clip to the 1080x1920 output frame and strips audio
+// (narration replaces it entirely). If the user's trimmed clip is shorter
+// than the scene's TTS-measured narration, loops it so the background
+// never runs out before the voiceover does — muxWithSubtitles' -shortest
+// trims any extra length back down to the audio's length afterward.
+function normalizeClip(rawPath, targetDurationSeconds, outPath) {
+  const rawDuration = ffprobeDuration(rawPath);
+  const args = ['-y'];
+  if (rawDuration < targetDurationSeconds) {
+    args.push('-stream_loop', '-1');
+  }
+  args.push(
+    '-i', rawPath,
+    '-t', targetDurationSeconds.toFixed(2),
+    '-vf', `scale=${WIDTH}:${HEIGHT}:force_original_aspect_ratio=increase,crop=${WIDTH}:${HEIGHT}`,
+    '-r', String(FPS),
+    '-pix_fmt', 'yuv420p',
+    '-an',
+    outPath
+  );
+  run('ffmpeg', args);
 }
 
-// Requests as many distinct Kling clips as needed to cover a scene's full
-// (TTS-measured) duration and concatenates them — no looping, so nothing
-// visibly repeats even for a long [본문] scene. This costs proportionally
-// more than looping a single clip (Kling bills per second regardless of
-// whether the content repeats), but was chosen deliberately over the
-// cheaper loop-one-clip approach.
-//
-// Each clip is attempted with its own retry budget (see
-// generateSceneClipWithRetry). If a clip still fails after retries, only
-// that one clip falls back to a free gradient segment of the same
-// duration — clips that already succeeded (and were already billed) are
-// kept and concatenated alongside it, instead of discarding the whole
-// scene as before. If KLING_API_KEY isn't set at all, the whole scene
-// uses one gradient clip for its full duration (unchanged behavior).
-async function getSceneBackgroundVideo(scene, index, cutName, topic) {
-  if (!process.env.KLING_API_KEY) {
-    const backgroundVideoPath = path.join(BUILD_DIR, `${cutName}-bg.mp4`);
-    await renderGradientClip(topic, scene.visual, index, scene.duration, backgroundVideoPath);
-    return backgroundVideoPath;
-  }
+async function getRankClipBackground(item, cutName, targetDuration) {
+  const rawPath = path.join(BUILD_DIR, `${cutName}-raw.mp4`);
+  downloadYoutubeClip(item.videoId, item.start, item.end, rawPath);
 
-  const clipSeconds = Number(process.env.KLING_CLIP_DURATION) || DEFAULT_CLIP_DURATION;
-  const clipCount = Math.max(1, Math.ceil(scene.duration / clipSeconds));
-  console.log(`     Kling으로 배경 클립 ${clipCount}개 생성 중 (반복 없이 이어붙임, 클립당 ${clipSeconds}초)...`);
-
-  const normalizedClipPaths = [];
-  for (let c = 0; c < clipCount; c++) {
-    const normalizedClipPath = path.join(BUILD_DIR, `${cutName}-kling-norm-${c}.mp4`);
-
-    try {
-      const prompt = buildKlingPrompt(scene, topic);
-      const externalTaskId = `shortapp-${Date.now()}-${index}-${c}`;
-      console.log(`       -> 클립 ${c + 1}/${clipCount} (task: ${externalTaskId})`);
-      const { buffer } = await generateSceneClipWithRetry(prompt, externalTaskId, { duration: clipSeconds });
-
-      const rawClipPath = path.join(BUILD_DIR, `${cutName}-kling-raw-${c}.mp4`);
-      fs.writeFileSync(rawClipPath, buffer);
-
-      run('ffmpeg', [
-        '-y',
-        '-i', rawClipPath,
-        '-vf', `scale=${WIDTH}:${HEIGHT}:force_original_aspect_ratio=increase,crop=${WIDTH}:${HEIGHT}`,
-        '-r', String(FPS),
-        '-pix_fmt', 'yuv420p',
-        '-an',
-        normalizedClipPath
-      ]);
-    } catch (err) {
-      console.warn(`       -> 클립 ${c + 1}/${clipCount} 재시도 끝에 실패, 이 클립만 그라데이션으로 대체합니다: ${err.message}`);
-      await renderGradientClip(topic, scene.visual, `${index}-${c}`, clipSeconds, normalizedClipPath);
-    }
-
-    normalizedClipPaths.push(normalizedClipPath);
-  }
-
-  const concatListPath = path.join(BUILD_DIR, `${cutName}-kling-concat.txt`);
-  const concatList = normalizedClipPaths.map((p) => `file '${p.replace(/'/g, "'\\''")}'`).join('\n') + '\n';
-  fs.writeFileSync(concatListPath, concatList, 'utf8');
-
-  // All segments share identical codec/scale/fps/pix_fmt (either from the
-  // Kling normalize step or from renderBackgroundVideo's own encode
-  // settings), so a stream-copy concat is safe. Any extra length beyond
-  // the scene's actual duration gets trimmed later by muxWithSubtitles'
-  // -shortest (it's muxed against the audio track).
-  const joinedPath = path.join(BUILD_DIR, `${cutName}-bg.mp4`);
-  run('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', concatListPath, '-c', 'copy', joinedPath]);
-  return joinedPath;
+  const normalizedPath = path.join(BUILD_DIR, `${cutName}-bg.mp4`);
+  normalizeClip(rawPath, targetDuration, normalizedPath);
+  return normalizedPath;
 }
 
-function loadScenes(latest) {
-  if (Array.isArray(latest.scenes) && latest.scenes.length > 0) {
-    return latest.scenes.map((s) => ({
-      label: s.label,
-      narration: s.narration || s.text || '',
-      visual: s.visual || ''
-    }));
+async function getTitleCardBackground(kind, label, cutName, targetDuration) {
+  const imagePath = path.join(BUILD_DIR, `${cutName}-bg.png`);
+  const image = await generateTitleCardImage(kind, label);
+  fs.writeFileSync(imagePath, image);
+
+  const videoPath = path.join(BUILD_DIR, `${cutName}-bg-card.mp4`);
+  renderBackgroundVideo(imagePath, targetDuration, videoPath);
+  return videoPath;
+}
+
+function cueLabel(item) {
+  if (item.type === 'intro') return '인트로';
+  if (item.type === 'outro') return '아웃트로';
+  return `${item.rank}위`;
+}
+
+function loadItems(latest) {
+  const items = Array.isArray(latest.items) ? latest.items : null;
+  if (!items || items.length === 0) {
+    throw new Error('scripts/latest.json에 items가 없습니다.');
   }
-  // Fall back to parsing the flat script text (older latest.json files
-  // generated before per-scene visual descriptions existed).
-  if (!latest.script) {
-    throw new Error('scripts/latest.json에 scenes도 script도 없습니다.');
+  const hasIntro = items.some((i) => i.type === 'intro');
+  const hasOutro = items.some((i) => i.type === 'outro');
+  const rankCount = items.filter((i) => i.type === 'rank').length;
+  if (!hasIntro || !hasOutro || rankCount === 0) {
+    throw new Error('items에는 intro 1개, rank 1개 이상, outro 1개가 필요합니다.');
   }
-  return parseScriptSegments(latest.script).map((s) => ({
-    label: s.label,
-    narration: s.text,
-    visual: ''
-  }));
+  return items;
 }
 
 async function main() {
@@ -198,54 +171,64 @@ async function main() {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   fs.mkdirSync(CUTS_DIR, { recursive: true });
 
-  console.log('1/5 장면 목록 불러오는 중...');
-  const scenes = loadScenes(latest);
-  console.log(`  -> ${scenes.length}개 장면: ${scenes.map((s) => s.label).join(', ')}`);
+  console.log('1/5 항목 목록 불러오는 중...');
+  const items = loadItems(latest);
+  console.log(`  -> ${items.length}개 항목: ${items.map(cueLabel).join(', ')}`);
 
-  console.log('2/5 장면별 음성 생성 중 (ElevenLabs)...');
+  console.log('2/5 항목별 음성 생성 중 (ElevenLabs)...');
   const audioPaths = [];
-  for (let i = 0; i < scenes.length; i++) {
-    const scene = scenes[i];
-    const audioBuffer = await synthesizeSpeech(scene.narration);
-    const audioPath = path.join(BUILD_DIR, `scene-${i}.mp3`);
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const audioBuffer = await synthesizeSpeech(item.narration);
+    const audioPath = path.join(BUILD_DIR, `item-${i}.mp3`);
     fs.writeFileSync(audioPath, audioBuffer);
     audioPaths.push(audioPath);
-    console.log(`  -> [${scene.label}] 생성 완료 (${audioBuffer.length} bytes)`);
+    console.log(`  -> [${cueLabel(item)}] 생성 완료 (${audioBuffer.length} bytes)`);
   }
 
   console.log('3/5 길이 측정 중...');
   let cursor = 0;
-  const timedScenes = scenes.map((scene, i) => {
+  const timedItems = items.map((item, i) => {
     const duration = ffprobeDuration(audioPaths[i]);
-    const timed = { ...scene, start: cursor, duration };
+    const timed = { ...item, start: cursor, duration };
     cursor += duration;
     return timed;
   });
   const totalDuration = cursor;
   console.log(`  -> 총 길이: ${totalDuration.toFixed(2)}초`);
 
-  console.log('4/5 장면별 클립 생성 중 (배경은 비주얼 묘사 기반)...');
+  console.log('4/5 항목별 클립 생성 중 (순위 항목은 실제 유튜브 클립 다운로드)...');
   const cutFiles = [];
   const cutVideoPaths = [];
-  for (let i = 0; i < timedScenes.length; i++) {
-    const scene = timedScenes[i];
-    const cutName = `cut-${String(i + 1).padStart(2, '0')}-${slugify(scene.label)}`;
-    console.log(`  -> [${i + 1}/${timedScenes.length}] ${scene.label} (${scene.duration.toFixed(2)}초) — 비주얼: ${scene.visual || '(기본)'}`);
+  const creditLines = [];
 
-    const cutBackgroundVideoPath = await getSceneBackgroundVideo(scene, i, cutName, latest.topic);
+  for (let i = 0; i < timedItems.length; i++) {
+    const item = timedItems[i];
+    const label = cueLabel(item);
+    const cutName = `cut-${String(i + 1).padStart(2, '0')}-${slugify(label)}`;
+    console.log(`  -> [${i + 1}/${timedItems.length}] ${label} (${item.duration.toFixed(2)}초)`);
+
+    let backgroundPath;
+    if (item.type === 'rank') {
+      backgroundPath = await getRankClipBackground(item, cutName, item.duration);
+      creditLines.push(`${item.rank}위: "${item.title}" - ${item.channelTitle} (${item.url}) - CC BY (https://creativecommons.org/licenses/by/4.0/legalcode)`);
+    } else {
+      backgroundPath = await getTitleCardBackground(item.type, latest.topic || '', cutName, item.duration);
+    }
 
     const cutAssPath = path.join(BUILD_DIR, `${cutName}.ass`);
-    const sceneCues = buildSceneCues({ label: scene.label, text: scene.narration, start: 0, duration: scene.duration });
+    const sceneCues = buildSceneCues({ label, text: item.narration, start: 0, duration: item.duration });
     fs.writeFileSync(cutAssPath, buildAssSubtitles(sceneCues), 'utf8');
 
     const cutVideoPath = path.join(CUTS_DIR, `${cutName}.mp4`);
-    muxWithSubtitles(cutBackgroundVideoPath, audioPaths[i], cutAssPath, cutVideoPath);
+    muxWithSubtitles(backgroundPath, audioPaths[i], cutAssPath, cutVideoPath);
     cutVideoPaths.push(cutVideoPath);
 
     const cutTextPath = path.join(CUTS_DIR, `${cutName}.txt`);
-    fs.writeFileSync(cutTextPath, `${scene.label}\n\n${scene.narration}\n\n[비주얼: ${scene.visual || '(기본)'}]\n`, 'utf8');
+    const sourceLine = item.type === 'rank' ? `\n[출처: ${item.title} - ${item.channelTitle} (${item.url})]\n` : '';
+    fs.writeFileSync(cutTextPath, `${label}\n\n${item.narration}\n${sourceLine}`, 'utf8');
 
-    cutFiles.push({ label: scene.label, video: `cuts/${cutName}.mp4`, text: `cuts/${cutName}.txt` });
+    cutFiles.push({ label, video: `cuts/${cutName}.mp4`, text: `cuts/${cutName}.txt` });
   }
 
   console.log('5/5 컷 이어붙여서 최종본 조립 중...');
@@ -256,20 +239,27 @@ async function main() {
   const outputPath = path.join(OUTPUT_DIR, 'shorts.mp4');
   run('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', concatListPath, '-c', 'copy', outputPath]);
 
+  const creditsPath = path.join(OUTPUT_DIR, 'credits.txt');
+  fs.writeFileSync(
+    creditsPath,
+    `이 영상은 아래 Creative Commons(CC BY) 라이선스 영상을 사용했습니다. 업로드 전 설명란에 아래 내용을 붙여넣으세요:\n\n${creditLines.join('\n')}\n`,
+    'utf8'
+  );
+
   const metaPath = path.join(OUTPUT_DIR, 'shorts.meta.json');
   fs.writeFileSync(metaPath, JSON.stringify({
     topic: latest.topic,
-    tone: latest.tone,
-    keyword: latest.keyword,
     duration: totalDuration,
     generatedAt: new Date().toISOString(),
-    scenes: timedScenes.map(({ label, start, duration, narration, visual }) => ({ label, start, duration, narration, visual })),
+    items: timedItems.map(({ type, rank, title, channelTitle, url, start, duration, narration }) =>
+      ({ type, rank, title, channelTitle, url, start, duration, narration })),
     cuts: cutFiles,
     finalVideo: 'shorts.mp4',
-    note: 'shorts.mp4는 cuts/ 폴더의 개별 클립을 이어붙인 것입니다. 컷을 더 다듬고 싶으면 cuts/의 mp4를 CapCut 등으로 가져와 편집 후 새로 내보내세요.'
+    credits: 'credits.txt',
+    note: 'shorts.mp4는 cuts/ 폴더의 개별 클립을 이어붙인 것입니다. 업로드 전 credits.txt의 출처 표기를 설명란에 반드시 포함하세요 (CC BY 라이선스 조건).'
   }, null, 2) + '\n', 'utf8');
 
-  console.log(`완료: ${outputPath} (컷 ${cutFiles.length}개는 ${CUTS_DIR}에 저장됨)`);
+  console.log(`완료: ${outputPath} (컷 ${cutFiles.length}개는 ${CUTS_DIR}에 저장됨, 출처는 ${creditsPath} 참고)`);
 }
 
 main().catch((err) => {

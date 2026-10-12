@@ -1,4 +1,4 @@
-name: 영상 제작 (음성 + 자막 + 배경)
+name: 영상 제작 (유튜브 클립 + 음성 + 자막)
 
 on:
   workflow_dispatch: {}
@@ -18,10 +18,16 @@ jobs:
         with:
           node-version: '20'
 
-      - name: 시스템 패키지 설치 (ffmpeg, 한글 폰트)
+      - name: Python 설정 (yt-dlp용)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 시스템 패키지 설치 (ffmpeg, 한글 폰트, yt-dlp)
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg fonts-noto-cjk
+          pip install -U yt-dlp
 
       - name: npm 의존성 설치
         run: npm install
@@ -30,8 +36,6 @@ jobs:
         env:
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
-          KLING_API_KEY: ${{ secrets.KLING_API_KEY }}
-          KLING_CLIP_DURATION: ${{ secrets.KLING_CLIP_DURATION }}
         run: node scripts/generate-video.js
 
       - name: 결과 mp4 아티팩트 업로드
@@ -41,5 +45,6 @@ jobs:
           path: |
             output/shorts.mp4
             output/shorts.meta.json
+            output/credits.txt
             output/cuts/**
           retention-days: 90

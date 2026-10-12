@@ -1,29 +1,15 @@
-name: 소재수집 + 대본생성
+name: 대본 생성 (순위 영상)
 
 on:
   workflow_dispatch:
     inputs:
       topic:
-        description: '주제 (예: 우주, 물리학, 랜덤)'
+        description: '주제 (예: 신기한 동물 순간)'
         required: false
-        default: '랜덤'
-      tone:
-        description: '톤 & 스타일'
-        required: false
-        default: '흥미진진하고 호기심을 자극하는'
-      keyword:
-        description: '세부 키워드 (선택)'
-        required: false
-        default: ''
-      duration:
-        description: '영상 길이(초)'
-        required: false
-        default: '60'
-        type: choice
-        options:
-          - '30'
-          - '60'
-          - '90'
+        default: '순위 모음'
+      selectedClips:
+        description: '선택된 5개 클립 (JSON, 페이지에서 자동 생성됨)'
+        required: true
 
 permissions:
   contents: write
@@ -44,9 +30,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GENERATE_TOPIC: ${{ inputs.topic }}
-          GENERATE_TONE: ${{ inputs.tone }}
-          GENERATE_KEYWORD: ${{ inputs.keyword }}
-          GENERATE_DURATION: ${{ inputs.duration }}
+          SELECTED_CLIPS: ${{ inputs.selectedClips }}
         run: node scripts/generate-script.js
 
       - name: 결과 커밋 및 푸시
