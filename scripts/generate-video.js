@@ -82,16 +82,42 @@ function muxWithSubtitles(backgroundVideoPath, audioPath, assPath, outputPath) {
 // Downloads just the [start, end) seconds of a YouTube video (not the
 // whole thing) via yt-dlp's --download-sections, since that's all a
 // given rank item needs.
-function downloadYoutubeClip(videoId, start, end, outPath) {
+//
+// YouTube increasingly serves a "Sign in to confirm you're not a bot"
+// error to requests from datacenter IPs (which is exactly what a GitHub
+// Actions runner is), blocking the default web player client entirely.
+// The standard yt-dlp workaround is to request a different player
+// client (tv/android) that YouTube doesn't gate the same way — so this
+// tries a short list of them in order instead of just the default.
+const YT_DLP_PLAYER_CLIENTS = ['tv', 'android', 'web'];
+
+function downloadYoutubeClip(videoId, start, end, outPath, playerClient) {
   const url = `https://www.youtube.com/watch?v=${videoId}`;
-  run('yt-dlp', [
+  const args = [
     '-f', 'bv*[height<=1080]+ba/b[height<=1080]/b',
     '--download-sections', `*${start}-${end}`,
     '--force-keyframes-at-cuts',
-    '--merge-output-format', 'mp4',
-    '-o', outPath,
-    url
-  ]);
+    '--merge-output-format', 'mp4'
+  ];
+  if (playerClient) {
+    args.push('--extractor-args', `youtube:player_client=${playerClient}`);
+  }
+  args.push('-o', outPath, url);
+  run('yt-dlp', args);
+}
+
+function downloadYoutubeClipWithRetry(videoId, start, end, outPath) {
+  let lastErr;
+  for (const client of YT_DLP_PLAYER_CLIENTS) {
+    try {
+      downloadYoutubeClip(videoId, start, end, outPath, client);
+      return;
+    } catch (err) {
+      lastErr = err;
+      console.warn(`       -> yt-dlp (${client} 클라이언트) 다운로드 실패, 다른 클라이언트로 재시도합니다.`);
+    }
+  }
+  throw lastErr;
 }
 
 // Scales/crops a raw clip to the 1080x1920 output frame and strips audio
@@ -119,7 +145,7 @@ function normalizeClip(rawPath, targetDurationSeconds, outPath) {
 
 async function getRankClipBackground(item, cutName, targetDuration) {
   const rawPath = path.join(BUILD_DIR, `${cutName}-raw.mp4`);
-  downloadYoutubeClip(item.videoId, item.start, item.end, rawPath);
+  downloadYoutubeClipWithRetry(item.videoId, item.start, item.end, rawPath);
 
   const normalizedPath = path.join(BUILD_DIR, `${cutName}-bg.mp4`);
   normalizeClip(rawPath, targetDuration, normalizedPath);
@@ -210,8 +236,13 @@ async function main() {
 
     let backgroundPath;
     if (item.type === 'rank') {
-      backgroundPath = await getRankClipBackground(item, cutName, item.duration);
-      creditLines.push(`${item.rank}위: "${item.title}" - ${item.channelTitle} (${item.url}) - CC BY (https://creativecommons.org/licenses/by/4.0/legalcode)`);
+      try {
+        backgroundPath = await getRankClipBackground(item, cutName, item.duration);
+        creditLines.push(`${item.rank}위: "${item.title}" - ${item.channelTitle} (${item.url}) - CC BY (https://creativecommons.org/licenses/by/4.0/legalcode)`);
+      } catch (err) {
+        console.warn(`     클립 다운로드 실패, 이 항목만 타이틀 카드로 대체합니다: ${err.message}`);
+        backgroundPath = await getTitleCardBackground('rank', `${item.rank}위`, cutName, item.duration);
+      }
     } else {
       backgroundPath = await getTitleCardBackground(item.type, latest.topic || '', cutName, item.duration);
     }
