@@ -23,6 +23,11 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Deno 설정 (yt-dlp가 유튜브 PO 토큰 생성에 사용)
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
       - name: 시스템 패키지 설치 (ffmpeg, 한글 폰트, yt-dlp)
         run: |
           sudo apt-get update
