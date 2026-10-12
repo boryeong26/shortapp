@@ -1,15 +1,16 @@
-// POST /api/save-scenes
-// Body: { token, topic, generatedAt, items }
+// POST /api/save-recommendations
+// Body: { token, topic, items }
+// items: [{ videoId, title, channelTitle, thumbnail, durationSeconds, url, comment }]
 //
-// Persists edited narration (intro/rank items/outro, editable on the
-// page before video generation runs) back to scripts/latest.json in the
-// repo via the GitHub Contents API. Requires GITHUB_DISPATCH_TOKEN to
-// have Contents: Read and write on the repo.
+// Persists the user's saved/curated video list to data/recommendations.json
+// in the repo via the GitHub Contents API, so it survives a page refresh
+// and is visible to anyone viewing the published site. Requires
+// GITHUB_DISPATCH_TOKEN to have Contents: Read and write on the repo.
 
 const { applyCors } = require('../lib/cors');
 const { verifySessionToken } = require('../lib/auth');
 
-const FILE_PATH = 'scripts/latest.json';
+const FILE_PATH = 'data/recommendations.json';
 
 module.exports = async (req, res) => {
   if (applyCors(req, res)) return;
@@ -41,47 +42,24 @@ module.exports = async (req, res) => {
   }
 
   const items = Array.isArray(body.items) ? body.items : null;
-  if (!items || items.length === 0) {
+  if (!items) {
     res.status(400).json({ error: 'items 배열이 필요합니다.' });
     return;
   }
 
-  const hasIntro = items.some((i) => i.type === 'intro');
-  const hasOutro = items.some((i) => i.type === 'outro');
-  const rankCount = items.filter((i) => i.type === 'rank').length;
-  if (!hasIntro || !hasOutro || rankCount === 0) {
-    res.status(400).json({ error: 'items에는 intro 1개, rank 1개 이상, outro 1개가 필요합니다.' });
-    return;
-  }
-
-  const cleanedItems = items.map((item) => {
-    const narration = String(item.narration || '').trim();
-    if (item.type === 'rank') {
-      return {
-        type: 'rank',
-        rank: Number(item.rank),
-        videoId: String(item.videoId || ''),
-        title: String(item.title || ''),
-        channelTitle: String(item.channelTitle || ''),
-        channelId: String(item.channelId || ''),
-        url: String(item.url || ''),
-        description: String(item.description || '').slice(0, 300),
-        start: Number(item.start) || 0,
-        end: Number(item.end) || 0,
-        narration
-      };
-    }
-    return { type: item.type, narration };
-  });
-
-  if (cleanedItems.some((item) => !item.narration)) {
-    res.status(400).json({ error: '모든 항목의 내레이션은 비어 있을 수 없습니다.' });
-    return;
-  }
+  const cleanedItems = items.map((item) => ({
+    videoId: String(item.videoId || ''),
+    title: String(item.title || '').slice(0, 200),
+    channelTitle: String(item.channelTitle || '').slice(0, 100),
+    thumbnail: String(item.thumbnail || '').slice(0, 300),
+    durationSeconds: Number(item.durationSeconds) || null,
+    url: String(item.url || (item.videoId ? `https://www.youtube.com/watch?v=${item.videoId}` : '')).slice(0, 200),
+    comment: item.comment ? String(item.comment).slice(0, 500) : null
+  })).filter((item) => item.videoId);
 
   const updated = {
-    generatedAt: body.generatedAt || new Date().toISOString(),
-    topic: body.topic || null,
+    updatedAt: new Date().toISOString(),
+    topic: body.topic ? String(body.topic).slice(0, 100) : null,
     items: cleanedItems
   };
 
@@ -109,7 +87,7 @@ module.exports = async (req, res) => {
       method: 'PUT',
       headers: { ...githubHeaders, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: 'chore: 항목 편집 저장',
+        message: 'chore: 추천 리스트 저장',
         content: contentBase64,
         sha,
         branch: ref
@@ -118,14 +96,14 @@ module.exports = async (req, res) => {
 
     if (!putRes.ok) {
       const errText = await putRes.text();
-      console.error('save-scenes commit error:', putRes.status, errText);
+      console.error('save-recommendations commit error:', putRes.status, errText);
       res.status(502).json({ error: 'GitHub에 저장하지 못했습니다. GITHUB_DISPATCH_TOKEN에 Contents 쓰기 권한이 있는지 확인하세요.' });
       return;
     }
 
     res.status(200).json({ ok: true });
   } catch (err) {
-    console.error('save-scenes error:', err);
-    res.status(500).json({ error: '항목 저장 중 오류가 발생했습니다.' });
+    console.error('save-recommendations error:', err);
+    res.status(500).json({ error: '리스트 저장 중 오류가 발생했습니다.' });
   }
 };
