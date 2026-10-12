@@ -1,0 +1,40 @@
+name: 오늘의 기초 영어회화
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    # 07:00 KST == 22:00 UTC the previous day
+    - cron: '0 22 * * *'
+
+permissions:
+  contents: write
+
+jobs:
+  daily-pick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Node.js 설정
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 오늘의 주제 생성
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: node scripts/daily-pick.js
+
+      - name: 결과 커밋 및 푸시
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/daily.json data/daily-history.json
+          if git diff --cached --quiet; then
+            echo "변경 사항이 없어 커밋을 건너뜁니다."
+          else
+            git commit -m "chore: 오늘의 영어회화 업데이트"
+            git push
+          fi

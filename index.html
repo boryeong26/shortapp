@@ -338,6 +338,41 @@
     padding: 12px 0;
   }
 
+  .phrase-match {
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    background: #0a0d1a;
+    margin-bottom: 14px;
+  }
+
+  .phrase-match-head {
+    font-size: 12.5px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+
+  .phrase-match-head a { color: var(--accent-2); text-decoration: none; }
+  .phrase-match-head a:hover { text-decoration: underline; }
+
+  .embed-wrap {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%;
+    height: 0;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: #000;
+  }
+
+  .embed-wrap iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
   footer {
     text-align: center;
     color: var(--text-dim);
@@ -361,6 +396,18 @@
       <p>주제를 검색하면 AI가 각 영상에 짧은 추천 코멘트를 붙여줍니다. 마음에 드는 영상을 리스트에 저장해두세요.</p>
     </div>
 
+    <div class="card" id="dailyCard">
+      <div class="card-header">
+        <div class="card-icon">☀️</div>
+        <div>
+          <h2 class="card-title">오늘의 기초 영어회화</h2>
+          <p class="card-subtitle" id="dailyMeta">불러오는 중...</p>
+        </div>
+      </div>
+      <div class="error-box" id="dailyErrorBox"></div>
+      <div class="result-list" id="dailyList"></div>
+    </div>
+
     <div class="card" id="controlCard">
       <div class="card-header">
         <div class="card-icon">🔎</div>
@@ -377,6 +424,24 @@
       <div class="status-line" id="searchStatus"></div>
 
       <div class="result-list" id="resultList"></div>
+    </div>
+
+    <div class="card" id="phraseCard">
+      <div class="card-header">
+        <div class="card-icon">🗣️</div>
+        <div>
+          <h2 class="card-title">문장으로 발음 비교</h2>
+          <p class="card-subtitle">영어 문장을 검색하면 그 문장을 실제로 말하는 영상 구간을 찾아 여러 명의 발음을 비교해 들을 수 있어요</p>
+        </div>
+      </div>
+
+      <div class="topic-row" style="margin-top: 16px;">
+        <input type="text" id="phraseInput" placeholder="예: nice to meet you">
+        <button id="phraseSearchBtn">찾기</button>
+      </div>
+      <div class="status-line" id="phraseStatus"></div>
+
+      <div id="phraseResults" style="margin-top: 14px;"></div>
     </div>
 
     <div class="card" id="savedListCard">
@@ -420,10 +485,10 @@
     }
 
     let lastCandidates = [];
+    let lastDailyItems = [];
 
-    function renderResults(candidates) {
-      lastCandidates = candidates;
-      resultList.innerHTML = '';
+    function renderResultItems(container, candidates) {
+      container.innerHTML = '';
       candidates.forEach((c) => {
         const item = document.createElement('div');
         item.className = 'result-item';
@@ -479,8 +544,13 @@
         meta.appendChild(saveBtn);
 
         item.appendChild(meta);
-        resultList.appendChild(item);
+        container.appendChild(item);
       });
+    }
+
+    function renderResults(candidates) {
+      lastCandidates = candidates;
+      renderResultItems(resultList, candidates);
     }
 
     async function search() {
@@ -572,7 +642,8 @@
         removeBtn.addEventListener('click', () => {
           savedItems = savedItems.filter((x) => x.videoId !== it.videoId);
           renderSavedList();
-          renderResults(lastCandidates);
+          renderResultItems(resultList, lastCandidates);
+          renderResultItems(dailyList, lastDailyItems);
         });
         row.appendChild(removeBtn);
 
@@ -627,6 +698,109 @@
       }
     }
 
+    // --- Daily pick ---
+
+    const dailyList = document.getElementById('dailyList');
+    const dailyMeta = document.getElementById('dailyMeta');
+    const dailyErrorBox = document.getElementById('dailyErrorBox');
+
+    async function loadDailyPick() {
+      try {
+        const res = await fetch(`data/daily.json?t=${Date.now()}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`daily.json 요청 실패 (HTTP ${res.status})`);
+        const data = await res.json();
+
+        if (!data.topic || !Array.isArray(data.items) || data.items.length === 0) {
+          dailyMeta.textContent = '아직 생성된 오늘의 주제가 없습니다. (매일 오전 7시 자동 생성)';
+          lastDailyItems = [];
+          renderResultItems(dailyList, []);
+          return;
+        }
+
+        lastDailyItems = data.items;
+        dailyMeta.textContent = `${data.date || ''} · ${data.topic}`;
+        renderResultItems(dailyList, data.items);
+      } catch (err) {
+        dailyErrorBox.textContent = `오늘의 주제를 불러오지 못했습니다: ${err.message}`;
+        dailyErrorBox.style.display = 'block';
+      }
+    }
+
+    // --- Phrase search (find who says this sentence, and where) ---
+
+    const phraseInput = document.getElementById('phraseInput');
+    const phraseSearchBtn = document.getElementById('phraseSearchBtn');
+    const phraseStatus = document.getElementById('phraseStatus');
+    const phraseResults = document.getElementById('phraseResults');
+
+    function renderPhraseMatches(matches) {
+      phraseResults.innerHTML = '';
+      matches.forEach((m) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'phrase-match';
+
+        const head = document.createElement('div');
+        head.className = 'phrase-match-head';
+        const link = document.createElement('a');
+        link.href = `${m.url}&t=${Math.floor(m.startSeconds)}s`;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = `${m.channelTitle} — ${m.title}`;
+        head.appendChild(link);
+        wrap.appendChild(head);
+
+        const embedWrap = document.createElement('div');
+        embedWrap.className = 'embed-wrap';
+        const iframe = document.createElement('iframe');
+        iframe.src = `https://www.youtube.com/embed/${m.videoId}?start=${Math.floor(m.startSeconds)}`;
+        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+        iframe.allowFullscreen = true;
+        embedWrap.appendChild(iframe);
+        wrap.appendChild(embedWrap);
+
+        phraseResults.appendChild(wrap);
+      });
+    }
+
+    async function searchPhrase() {
+      const phrase = phraseInput.value.trim();
+      if (!phrase) {
+        phraseStatus.textContent = '검색할 문장을 입력하세요.';
+        return;
+      }
+
+      phraseSearchBtn.disabled = true;
+      phraseStatus.textContent = '영상들을 뒤져서 이 문장이 나오는 구간을 찾는 중... (시간이 좀 걸릴 수 있어요)';
+      phraseResults.innerHTML = '';
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/search-phrase`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phrase })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || '검색에 실패했습니다.');
+        }
+
+        const matches = data.matches || [];
+        phraseStatus.textContent = matches.length > 0
+          ? `${data.searchedCount}개 영상 중 ${matches.length}개에서 이 문장을 찾았습니다.`
+          : (data.note || '찾지 못했습니다.');
+        renderPhraseMatches(matches);
+      } catch (err) {
+        phraseStatus.textContent = `검색 실패: ${err.message}`;
+      } finally {
+        phraseSearchBtn.disabled = false;
+      }
+    }
+
+    phraseSearchBtn.addEventListener('click', searchPhrase);
+    phraseInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') searchPhrase(); });
+
+    loadDailyPick();
     loadSavedList();
   </script>
 </body>
