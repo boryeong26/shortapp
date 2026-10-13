@@ -21,6 +21,9 @@ jobs:
         with:
           node-version: '20'
 
+      - name: ffmpeg 설치 (문장별 음성을 전체 음성으로 합치는 데 사용)
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: 오늘의 주제 생성
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -33,7 +36,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/daily.json data/daily-history.json data/daily-paragraph.json data/daily-paragraph.mp3
+          git add data/daily.json data/daily-history.json data/daily-paragraph.json data/daily-paragraph/
           if git diff --cached --quiet; then
             echo "변경 사항이 없어 커밋을 건너뜁니다."
           else

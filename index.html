@@ -357,6 +357,14 @@
 
   .sentence-row:last-child { border-bottom: none; }
 
+  .sentence-text { flex: 1; min-width: 0; }
+
+  .sentence-row-inner {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
   .sentence-en {
     font-size: 13.5px;
     color: var(--text);
@@ -369,6 +377,57 @@
     margin-top: 3px;
     line-height: 1.5;
   }
+
+  .sentence-controls {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .icon-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid var(--panel-border);
+    background: #05060a;
+    color: var(--text-dim);
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  }
+
+  .icon-btn:hover { border-color: var(--accent); color: var(--text); }
+
+  .icon-btn.active {
+    border-color: var(--accent-2);
+    color: var(--accent-2);
+    background: rgba(51,226,199,0.1);
+  }
+
+  .icon-btn.playing {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .paragraph-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 4px;
+  }
+
+  .download-all-link {
+    font-size: 12px;
+    color: var(--accent-2);
+    text-decoration: none;
+    border: 1px solid var(--panel-border);
+    border-radius: 999px;
+    padding: 6px 12px;
+  }
+
+  .download-all-link:hover { border-color: var(--accent-2); }
 
   footer {
     text-align: center;
@@ -723,6 +782,39 @@
     const paragraphErrorBox = document.getElementById('paragraphErrorBox');
     const paragraphContent = document.getElementById('paragraphContent');
 
+    // Shared playback state so clicking a new sentence's play/loop button
+    // stops whatever was previously playing instead of overlapping audio.
+    let sentenceAudio = null;
+    let activeLoopBtn = null;
+
+    function stopSentenceAudio() {
+      if (sentenceAudio) sentenceAudio.pause();
+      paragraphContent.querySelectorAll('.icon-btn.playing, .icon-btn.active')
+        .forEach((b) => b.classList.remove('playing', 'active'));
+      activeLoopBtn = null;
+    }
+
+    function playSentenceOnce(src, playBtn) {
+      stopSentenceAudio();
+      sentenceAudio = new Audio(src);
+      playBtn.classList.add('playing');
+      sentenceAudio.addEventListener('ended', () => playBtn.classList.remove('playing'));
+      sentenceAudio.play();
+    }
+
+    function toggleSentenceLoop(src, loopBtn) {
+      if (activeLoopBtn === loopBtn) {
+        stopSentenceAudio();
+        return;
+      }
+      stopSentenceAudio();
+      sentenceAudio = new Audio(src);
+      sentenceAudio.loop = true;
+      loopBtn.classList.add('active');
+      activeLoopBtn = loopBtn;
+      sentenceAudio.play();
+    }
+
     async function loadDailyParagraph() {
       try {
         const res = await fetch(`data/daily-paragraph.json?t=${Date.now()}`, { cache: 'no-store' });
@@ -737,6 +829,7 @@
 
         paragraphMeta.textContent = `${data.date || ''} · ${data.topic || ''}`;
         paragraphContent.innerHTML = '';
+        stopSentenceAudio();
 
         const title = document.createElement('div');
         title.className = 'paragraph-title';
@@ -744,24 +837,75 @@
         paragraphContent.appendChild(title);
 
         if (data.audio) {
+          const fullSrc = `data/${data.audio}?t=${Date.now()}`;
+
+          const toolbar = document.createElement('div');
+          toolbar.className = 'paragraph-toolbar';
+          const downloadAllLink = document.createElement('a');
+          downloadAllLink.className = 'download-all-link';
+          downloadAllLink.href = fullSrc;
+          downloadAllLink.download = `${data.date || 'daily'}-full.mp3`;
+          downloadAllLink.textContent = '⬇ 전체 음성 다운로드';
+          toolbar.appendChild(downloadAllLink);
+          paragraphContent.appendChild(toolbar);
+
           const audio = document.createElement('audio');
           audio.className = 'paragraph-audio';
           audio.controls = true;
-          audio.src = `data/${data.audio}?t=${Date.now()}`;
+          audio.src = fullSrc;
           paragraphContent.appendChild(audio);
         }
 
-        data.sentences.forEach((s) => {
+        data.sentences.forEach((s, i) => {
           const row = document.createElement('div');
           row.className = 'sentence-row';
+
+          const inner = document.createElement('div');
+          inner.className = 'sentence-row-inner';
+
+          const textWrap = document.createElement('div');
+          textWrap.className = 'sentence-text';
           const en = document.createElement('div');
           en.className = 'sentence-en';
           en.textContent = s.en;
-          row.appendChild(en);
+          textWrap.appendChild(en);
           const ko = document.createElement('div');
           ko.className = 'sentence-ko';
           ko.textContent = s.ko;
-          row.appendChild(ko);
+          textWrap.appendChild(ko);
+          inner.appendChild(textWrap);
+
+          if (s.audio) {
+            const sentenceSrc = `data/${s.audio}?t=${Date.now()}`;
+            const controls = document.createElement('div');
+            controls.className = 'sentence-controls';
+
+            const playBtn = document.createElement('button');
+            playBtn.className = 'icon-btn';
+            playBtn.title = '재생';
+            playBtn.textContent = '▶';
+            playBtn.addEventListener('click', () => playSentenceOnce(sentenceSrc, playBtn));
+            controls.appendChild(playBtn);
+
+            const loopBtn = document.createElement('button');
+            loopBtn.className = 'icon-btn';
+            loopBtn.title = '반복 재생';
+            loopBtn.textContent = '🔁';
+            loopBtn.addEventListener('click', () => toggleSentenceLoop(sentenceSrc, loopBtn));
+            controls.appendChild(loopBtn);
+
+            const downloadLink = document.createElement('a');
+            downloadLink.className = 'icon-btn';
+            downloadLink.title = '다운로드';
+            downloadLink.href = sentenceSrc;
+            downloadLink.download = `${String(i + 1).padStart(2, '0')}-${(data.date || 'daily')}.mp3`;
+            downloadLink.textContent = '⬇';
+            controls.appendChild(downloadLink);
+
+            inner.appendChild(controls);
+          }
+
+          row.appendChild(inner);
           paragraphContent.appendChild(row);
         });
       } catch (err) {
