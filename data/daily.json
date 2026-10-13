@@ -1,7 +1,63 @@
 {
-  "date": null,
-  "generatedAt": null,
-  "topic": null,
-  "searchQuery": null,
-  "items": []
+  "date": "2026-10-13",
+  "generatedAt": "2026-10-13T00:16:37.788Z",
+  "topic": "카페에서 음료 주문하기",
+  "searchQuery": "ordering coffee at a cafe English conversation for beginners",
+  "items": [
+    {
+      "videoId": "0vWnfQc_-Qs",
+      "title": "Ordering Coffee in English | Easy Café Conversation for Beginners ☕🥐 #englishforbeginners",
+      "channelTitle": "better talk english",
+      "channelId": "UC58Y4XqwLbQn2YIdJZu0KoQ",
+      "description": "Learn simple English with this short café conversation! In this video, you’ll hear how to order coffee and a croissant in natural, everyday English. Perfect for English learners who want to practice real-life dialogues and improve fluency.\n\n👉 Watch, listen, and repeat to boost your English speaking",
+      "thumbnail": "https://i.ytimg.com/vi/0vWnfQc_-Qs/mqdefault.jpg",
+      "durationSeconds": 18,
+      "url": "https://www.youtube.com/watch?v=0vWnfQc_-Qs",
+      "comment": "이 영상은 영어로 카페 대화를 배우는 콘텐츠로, 한국어로 음료 주문하는 표현을 배우려는 학습자에게는 적합하지 않습니다."
+    },
+    {
+      "videoId": "9BwwLiYqnco",
+      "title": "Easy English Conversation ☕ At the Coffee Shop | English for Beginners",
+      "channelTitle": "Easy English Channel",
+      "channelId": "UC_PfOYyXd_a8dZ_oMaav0pA",
+      "description": "Learn easy English conversation with this coffee shop dialogue made for English beginners.\n\nIn this video, you will listen to a simple and slow English conversation between two people at a coffee shop.\nThe sentences are short and clear, so you can understand, listen, and practice English easily.\n\nTh",
+      "thumbnail": "https://i.ytimg.com/vi/9BwwLiYqnco/mqdefault.jpg",
+      "durationSeconds": 157,
+      "url": "https://www.youtube.com/watch?v=9BwwLiYqnco",
+      "comment": "영어 초보자를 위한 느리고 쉬운 카페 영어 대화 영상이라 한국어 학습 목적과는 맞지 않습니다."
+    },
+    {
+      "videoId": "9nq9ocivltk",
+      "title": "Ordering at a Coffee Shop English Speaking: How to Order Coffee in English Conversation",
+      "channelTitle": "English Together",
+      "channelId": "UCIrLzmyYoeIaBhqA0ma4vpg",
+      "description": "Learning how to order coffee at a coffee shop 🍵☕️is an essential foundation for beginners to practice everyday English conversation. In this video, you will learn how to use simple English to place an order and successfully complete a transaction at a coffee shop. You will be introduced to basic ca",
+      "thumbnail": "https://i.ytimg.com/vi/9nq9ocivltk/mqdefault.jpg",
+      "durationSeconds": 113,
+      "url": "https://www.youtube.com/watch?v=9nq9ocivltk",
+      "comment": "카페에서 영어로 주문하는 기본 표현을 다루는 영상으로, 한국어 음료 주문 표현 학습에는 도움이 되지 않습니다."
+    },
+    {
+      "videoId": "jhEtBuuYNj4",
+      "title": "How To Order Coffee In English",
+      "channelTitle": "Ariannita la Gringa",
+      "channelId": "UC3uODtYvKjb7gPY9EFOlUWw",
+      "description": "How To Order Coffee In English\n\n/// Subscribe and follow me on Social Media ///\n\nYoutube:\nSubscribe to my main channel teaching American English:  @ariannitalagringa \nSecond channel:  @soyariannita \n\nInstagram:\nTeaching English: https://instagram.com/ariannitalagringa?igshid=NTdlMDg3MTY=\n\nMy name is",
+      "thumbnail": "https://i.ytimg.com/vi/jhEtBuuYNj4/mqdefault.jpg",
+      "durationSeconds": 569,
+      "url": "https://www.youtube.com/watch?v=jhEtBuuYNj4",
+      "comment": "제목과 설명이 영어로 커피 주문하는 법을 알려주는 내용이라 한국어 학습자에게는 직접적인 도움이 되지 않습니다."
+    },
+    {
+      "videoId": "mlwQGfkqBMo",
+      "title": "Slow English Conversation at a Coffee Shop | Learn Everyday English for Beginners #learnenglish ",
+      "channelTitle": "Boost English ",
+      "channelId": "UCvt-tXkVOdeYAPgxfggiUxA",
+      "description": "☕ Slow English Conversation at a Coffee Shop | Learn Everyday English for Beginners\n\nWelcome back to our English learning channel! 🌟\n\nDo you want to speak English confidently at a coffee shop? In this lesson, you will learn a useful, everyday English conversation between Grandma and a barista.\n\nThi",
+      "thumbnail": "https://i.ytimg.com/vi/mlwQGfkqBMo/mqdefault.jpg",
+      "durationSeconds": 311,
+      "url": "https://www.youtube.com/watch?v=mlwQGfkqBMo",
+      "comment": "할머니와 바리스타의 느린 영어 대화를 통한 카페 영어 학습 영상으로, 한국어 학습 목적과는 거리가 있습니다."
+    }
+  ]
 }
