@@ -1,4 +1,4 @@
-name: 오늘의 기초 영어회화 + 영어 단락
+name: 오늘의 영어 한 단락
 
 on:
   workflow_dispatch: {}
@@ -24,10 +24,9 @@ jobs:
       - name: ffmpeg 설치 (문장별 음성을 전체 음성으로 합치는 데 사용)
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: 오늘의 주제 생성
+      - name: 오늘의 영어 단락 생성
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
         run: node scripts/daily-pick.js
@@ -36,7 +35,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/daily.json data/daily-history.json data/daily-paragraph.json data/daily-paragraph/
+          git add data/daily-history.json data/daily-paragraph.json data/daily-paragraph/
           if git diff --cached --quiet; then
             echo "변경 사항이 없어 커밋을 건너뜁니다."
           else
