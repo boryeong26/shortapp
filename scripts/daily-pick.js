@@ -1,16 +1,21 @@
 // Node script run by the "오늘의 기초 영어회화" GitHub Actions workflow
 // (scheduled daily at 07:00 KST). Picks a fresh basic-English-conversation
-// topic/phrase, searches YouTube for it, asks Claude for a short comment
-// per result, and writes the result to data/daily.json for the page to
-// show. Keeps a short history of recent topics (data/daily-history.json)
-// so Claude is told what to avoid repeating.
+// topic/phrase, then produces two things for it: a page of recommended
+// YouTube videos (data/daily.json) and a ~10-sentence practice paragraph
+// with Korean translations + TTS audio (data/daily-paragraph.json +
+// data/daily-paragraph.mp3). Keeps a short history of recent topics
+// (data/daily-history.json) so Claude is told what to avoid repeating.
 
 const fs = require('fs');
 const path = require('path');
 const { searchVideos } = require('../lib/youtubeSearch');
 const { generateCommentary, callClaude } = require('../lib/recommendCommentary');
+const { generateDailyParagraph } = require('../lib/dailyParagraph');
+const { synthesizeSpeech } = require('../lib/tts');
 
 const DAILY_PATH = path.join(__dirname, '..', 'data', 'daily.json');
+const PARAGRAPH_JSON_PATH = path.join(__dirname, '..', 'data', 'daily-paragraph.json');
+const PARAGRAPH_AUDIO_PATH = path.join(__dirname, '..', 'data', 'daily-paragraph.mp3');
 const HISTORY_PATH = path.join(__dirname, '..', 'data', 'daily-history.json');
 const HISTORY_LIMIT = 30;
 
@@ -65,6 +70,10 @@ async function main() {
     console.error('YOUTUBE_API_KEY 환경변수가 설정되어 있지 않습니다.');
     process.exit(1);
   }
+  if (!process.env.ELEVENLABS_API_KEY) {
+    console.error('ELEVENLABS_API_KEY 환경변수가 설정되어 있지 않습니다.');
+    process.exit(1);
+  }
 
   const recentTopics = loadHistory();
   console.log(`최근 ${recentTopics.length}개 주제 이력 로드됨.`);
@@ -94,9 +103,30 @@ async function main() {
   };
 
   fs.writeFileSync(DAILY_PATH, JSON.stringify(output, null, 2) + '\n', 'utf8');
+
+  console.log('오늘의 영어 단락 생성 중...');
+  const paragraph = await generateDailyParagraph(topic, anthropicApiKey);
+  console.log(`  -> "${paragraph.title}" (${paragraph.sentences.length}문장)`);
+
+  const fullText = paragraph.sentences.map((s) => s.en).join(' ');
+  console.log('  -> TTS 음성 생성 중 (ElevenLabs)...');
+  const audioBuffer = await synthesizeSpeech(fullText);
+  fs.writeFileSync(PARAGRAPH_AUDIO_PATH, audioBuffer);
+  console.log(`  -> ${PARAGRAPH_AUDIO_PATH} (${audioBuffer.length} bytes)`);
+
+  const paragraphOutput = {
+    date: output.date,
+    generatedAt: output.generatedAt,
+    topic,
+    title: paragraph.title,
+    sentences: paragraph.sentences,
+    audio: 'daily-paragraph.mp3'
+  };
+  fs.writeFileSync(PARAGRAPH_JSON_PATH, JSON.stringify(paragraphOutput, null, 2) + '\n', 'utf8');
+
   saveHistory([...recentTopics, topic]);
 
-  console.log(`완료: ${DAILY_PATH}에 저장됨.`);
+  console.log(`완료: ${DAILY_PATH}, ${PARAGRAPH_JSON_PATH}에 저장됨.`);
 }
 
 main().catch((err) => {
