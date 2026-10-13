@@ -1,1 +1,19 @@
-{"items":[]}
+{
+  "updatedAt": "2026-10-13T05:16:25.342Z",
+  "items": [
+    {
+      "en": "Excuse me, can I get the check, please?",
+      "ko": "저기요, 계산서 좀 가져다주시겠어요?",
+      "audio": "daily-paragraph/01.mp3",
+      "topic": "식당에서 계산하기",
+      "date": "2026-10-13"
+    },
+    {
+      "en": "Thank you, have a great day!",
+      "ko": "감사합니다, 좋은 하루 보내세요!",
+      "audio": "daily-paragraph/10.mp3",
+      "topic": "식당에서 계산하기",
+      "date": "2026-10-13"
+    }
+  ]
+}
