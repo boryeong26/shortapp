@@ -16,7 +16,7 @@ const { applyCors } = require('../lib/cors');
 const { searchVideos } = require('../lib/youtubeSearch');
 
 const MAX_MATCHES = 6;
-const MAX_DURATION_SECONDS = 5;
+const MAX_DURATION_SECONDS = 15;
 
 module.exports = async (req, res) => {
   if (applyCors(req, res)) return;
