@@ -16,7 +16,7 @@ const { applyCors } = require('../lib/cors');
 const { searchVideos } = require('../lib/youtubeSearch');
 
 const MAX_MATCHES = 6;
-const MAX_DURATION_SECONDS = 30;
+const MAX_DURATION_SECONDS = 5;
 
 module.exports = async (req, res) => {
   if (applyCors(req, res)) return;
@@ -45,7 +45,7 @@ module.exports = async (req, res) => {
     // real duration from searchVideos(). Requests extra results since
     // most of the "short" bucket is still over a minute.
     const candidates = await searchVideos(phrase, {
-      maxResults: 20,
+      maxResults: 50,
       relevanceLanguage: 'en',
       videoDuration: 'short'
     });
@@ -63,7 +63,7 @@ module.exports = async (req, res) => {
     res.status(200).json({
       matches,
       note: matches.length === 0
-        ? '관련 영상을 찾지 못했습니다. 다른 문장으로 시도해보세요.'
+        ? `5초 이내로는 관련 영상을 찾지 못했습니다. 그렇게 짧은 영상 자체가 드물어서일 수 있어요 — 다른 문장으로 시도해보세요.`
         : null
     });
   } catch (err) {
