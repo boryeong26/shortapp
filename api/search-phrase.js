@@ -1,20 +1,22 @@
 // POST /api/search-phrase
 // Body: { phrase }
-// Response: { matches: [{ videoId, title, channelTitle, url, startSeconds }] }
+// Response: { matches: [{ videoId, title, channelTitle, url, startSeconds: 0 }] }
 //
 // Searches YouTube for videos likely to contain the given English
-// sentence/phrase, then checks each candidate's captions for the exact
-// phrase and the timestamp it's spoken at. Lets the page show the same
-// sentence said by several different speakers, each jumping straight to
-// that moment — nothing is downloaded, captions + the normal YouTube
-// embed player (with a start-time param) do the work.
+// sentence/phrase, so the page can show several different speakers
+// saying (roughly) the same thing side by side. This does NOT jump to
+// the exact moment the phrase is spoken — finding that requires reading
+// each video's captions, and YouTube's caption endpoint was confirmed
+// (via server logs) to silently block requests from this app's server
+// IP, on every host/header combination tried. So this just surfaces
+// candidate videos; the user finds the exact moment themselves via
+// YouTube's own captions/search-in-video.
 
 const { applyCors } = require('../lib/cors');
 const { searchVideos } = require('../lib/youtubeSearch');
-const { findPhraseInVideo } = require('../lib/youtubeTranscript');
 
-const MAX_CANDIDATES = 8;
-const MAX_MATCHES = 5;
+const MAX_MATCHES = 6;
+const MAX_DURATION_SECONDS = 30;
 
 module.exports = async (req, res) => {
   if (applyCors(req, res)) return;
@@ -37,19 +39,31 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const candidates = await searchVideos(phrase, { maxResults: MAX_CANDIDATES, relevanceLanguage: 'en' });
+    // YouTube's API has no "under 1 minute" filter, only coarse buckets
+    // (videoDuration=short means under 4 minutes) — so ask for short
+    // videos, then further filter down to <=60s ourselves using the
+    // real duration from searchVideos(). Requests extra results since
+    // most of the "short" bucket is still over a minute.
+    const candidates = await searchVideos(phrase, {
+      maxResults: 20,
+      relevanceLanguage: 'en',
+      videoDuration: 'short'
+    });
 
-    const results = await Promise.all(
-      candidates.map((c) => findPhraseInVideo(c, phrase).catch(() => null))
-    );
+    const shortEnough = candidates.filter((c) => c.durationSeconds && c.durationSeconds <= MAX_DURATION_SECONDS);
 
-    const matches = results.filter(Boolean).slice(0, MAX_MATCHES);
+    const matches = shortEnough.slice(0, MAX_MATCHES).map((c) => ({
+      videoId: c.videoId,
+      title: c.title,
+      channelTitle: c.channelTitle,
+      url: c.url,
+      startSeconds: 0
+    }));
 
     res.status(200).json({
       matches,
-      searchedCount: candidates.length,
       note: matches.length === 0
-        ? '검색된 영상 중 자막에서 이 문장을 정확히 찾은 영상이 없습니다. 문장을 조금 다르게(짧게, 또는 핵심 표현만) 시도해보세요.'
+        ? '관련 영상을 찾지 못했습니다. 다른 문장으로 시도해보세요.'
         : null
     });
   } catch (err) {
