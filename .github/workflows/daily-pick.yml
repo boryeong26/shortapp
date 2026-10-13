@@ -1,4 +1,4 @@
-name: 오늘의 기초 영어회화
+name: 오늘의 기초 영어회화 + 영어 단락
 
 on:
   workflow_dispatch: {}
@@ -25,13 +25,15 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
         run: node scripts/daily-pick.js
 
       - name: 결과 커밋 및 푸시
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/daily.json data/daily-history.json
+          git add data/daily.json data/daily-history.json data/daily-paragraph.json data/daily-paragraph.mp3
           if git diff --cached --quiet; then
             echo "변경 사항이 없어 커밋을 건너뜁니다."
           else
