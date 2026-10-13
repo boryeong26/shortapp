@@ -430,8 +430,8 @@
       <div class="card-header">
         <div class="card-icon">🗣️</div>
         <div>
-          <h2 class="card-title">문장으로 발음 비교</h2>
-          <p class="card-subtitle">영어 문장을 검색하면 그 문장을 실제로 말하는 영상 구간을 찾아 여러 명의 발음을 비교해 들을 수 있어요</p>
+          <h2 class="card-title">문장으로 영상 찾기</h2>
+          <p class="card-subtitle">영어 문장을 검색하면 5초 이내 짧은 관련 영상을 찾아줘요. 정확히 몇 분 몇 초에 나오는지는 자동으로 못 찾아서, 영상의 유튜브 자막(CC) 기능으로 직접 찾아보세요.</p>
         </div>
       </div>
 
@@ -742,7 +742,7 @@
         const head = document.createElement('div');
         head.className = 'phrase-match-head';
         const link = document.createElement('a');
-        link.href = `${m.url}&t=${Math.floor(m.startSeconds)}s`;
+        link.href = m.url;
         link.target = '_blank';
         link.rel = 'noopener';
         link.textContent = `${m.channelTitle} — ${m.title}`;
@@ -752,7 +752,7 @@
         const embedWrap = document.createElement('div');
         embedWrap.className = 'embed-wrap';
         const iframe = document.createElement('iframe');
-        iframe.src = `https://www.youtube.com/embed/${m.videoId}?start=${Math.floor(m.startSeconds)}`;
+        iframe.src = `https://www.youtube.com/embed/${m.videoId}`;
         iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
         iframe.allowFullscreen = true;
         embedWrap.appendChild(iframe);
@@ -770,7 +770,7 @@
       }
 
       phraseSearchBtn.disabled = true;
-      phraseStatus.textContent = '영상들을 뒤져서 이 문장이 나오는 구간을 찾는 중... (시간이 좀 걸릴 수 있어요)';
+      phraseStatus.textContent = '짧은(5초 이내) 관련 영상을 찾는 중...';
       phraseResults.innerHTML = '';
 
       try {
@@ -787,7 +787,7 @@
 
         const matches = data.matches || [];
         phraseStatus.textContent = matches.length > 0
-          ? `${data.searchedCount}개 영상 중 ${matches.length}개에서 이 문장을 찾았습니다.`
+          ? `5초 이내 관련 영상 ${matches.length}개를 찾았습니다.`
           : (data.note || '찾지 못했습니다.');
         renderPhraseMatches(matches);
       } catch (err) {
