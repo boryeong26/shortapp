@@ -2,12 +2,14 @@
 // (scheduled daily at 07:00 KST). Picks a fresh basic-English-conversation
 // topic/phrase, then produces two things for it: a page of recommended
 // YouTube videos (data/daily.json) and a ~10-sentence practice paragraph
-// with Korean translations + TTS audio (data/daily-paragraph.json +
-// data/daily-paragraph.mp3). Keeps a short history of recent topics
-// (data/daily-history.json) so Claude is told what to avoid repeating.
+// with Korean translations + per-sentence TTS audio
+// (data/daily-paragraph.json + data/daily-paragraph/*.mp3). Keeps a
+// short history of recent topics (data/daily-history.json) so Claude is
+// told what to avoid repeating.
 
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 const { searchVideos } = require('../lib/youtubeSearch');
 const { generateCommentary, callClaude } = require('../lib/recommendCommentary');
 const { generateDailyParagraph } = require('../lib/dailyParagraph');
@@ -15,7 +17,7 @@ const { synthesizeSpeech } = require('../lib/tts');
 
 const DAILY_PATH = path.join(__dirname, '..', 'data', 'daily.json');
 const PARAGRAPH_JSON_PATH = path.join(__dirname, '..', 'data', 'daily-paragraph.json');
-const PARAGRAPH_AUDIO_PATH = path.join(__dirname, '..', 'data', 'daily-paragraph.mp3');
+const PARAGRAPH_DIR = path.join(__dirname, '..', 'data', 'daily-paragraph');
 const HISTORY_PATH = path.join(__dirname, '..', 'data', 'daily-history.json');
 const HISTORY_LIMIT = 30;
 
@@ -108,19 +110,43 @@ async function main() {
   const paragraph = await generateDailyParagraph(topic, anthropicApiKey);
   console.log(`  -> "${paragraph.title}" (${paragraph.sentences.length}문장)`);
 
-  const fullText = paragraph.sentences.map((s) => s.en).join(' ');
-  console.log('  -> TTS 음성 생성 중 (ElevenLabs)...');
-  const audioBuffer = await synthesizeSpeech(fullText);
-  fs.writeFileSync(PARAGRAPH_AUDIO_PATH, audioBuffer);
-  console.log(`  -> ${PARAGRAPH_AUDIO_PATH} (${audioBuffer.length} bytes)`);
+  fs.rmSync(PARAGRAPH_DIR, { recursive: true, force: true });
+  fs.mkdirSync(PARAGRAPH_DIR, { recursive: true });
+
+  console.log('  -> 문장별 TTS 음성 생성 중 (ElevenLabs)...');
+  const sentenceFiles = [];
+  const sentencesWithAudio = [];
+  for (let i = 0; i < paragraph.sentences.length; i++) {
+    const sentence = paragraph.sentences[i];
+    const fileName = `${String(i + 1).padStart(2, '0')}.mp3`;
+    const audioBuffer = await synthesizeSpeech(sentence.en);
+    fs.writeFileSync(path.join(PARAGRAPH_DIR, fileName), audioBuffer);
+    sentenceFiles.push(fileName);
+    sentencesWithAudio.push({ ...sentence, audio: `daily-paragraph/${fileName}` });
+    console.log(`     [${i + 1}/${paragraph.sentences.length}] ${fileName} (${audioBuffer.length} bytes)`);
+  }
+
+  // Joins the already-synthesized per-sentence clips into one full-paragraph
+  // file instead of making a second (duplicate-cost) TTS call for the
+  // whole text — same codec/bitrate from ElevenLabs throughout, so a
+  // stream-copy concat is safe.
+  console.log('  -> 전체 음성 합치는 중 (ffmpeg)...');
+  const concatListPath = path.join(PARAGRAPH_DIR, 'concat-list.txt');
+  const concatList = sentenceFiles.map((f) => `file '${f}'`).join('\n') + '\n';
+  fs.writeFileSync(concatListPath, concatList, 'utf8');
+  execFileSync('ffmpeg', [
+    '-y', '-f', 'concat', '-safe', '0', '-i', concatListPath, '-c', 'copy', 'full.mp3'
+  ], { cwd: PARAGRAPH_DIR, stdio: 'inherit' });
+  fs.rmSync(concatListPath);
+  console.log('  -> daily-paragraph/full.mp3');
 
   const paragraphOutput = {
     date: output.date,
     generatedAt: output.generatedAt,
     topic,
     title: paragraph.title,
-    sentences: paragraph.sentences,
-    audio: 'daily-paragraph.mp3'
+    sentences: sentencesWithAudio,
+    audio: 'daily-paragraph/full.mp3'
   };
   fs.writeFileSync(PARAGRAPH_JSON_PATH, JSON.stringify(paragraphOutput, null, 2) + '\n', 'utf8');
 
