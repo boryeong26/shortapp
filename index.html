@@ -419,6 +419,36 @@
         }
         row.appendChild(meta);
 
+        if (it.audio) {
+          const savedSrc = `data/${it.audio}?t=${Date.now()}`;
+          const controls = document.createElement('div');
+          controls.className = 'sentence-controls';
+
+          const playBtn = document.createElement('button');
+          playBtn.className = 'icon-btn';
+          playBtn.title = '재생';
+          playBtn.textContent = '▶';
+          playBtn.addEventListener('click', () => playSentenceOnce(savedSrc, playBtn));
+          controls.appendChild(playBtn);
+
+          const loopBtn = document.createElement('button');
+          loopBtn.className = 'icon-btn';
+          loopBtn.title = '반복 재생';
+          loopBtn.textContent = '🔁';
+          loopBtn.addEventListener('click', () => toggleSentenceLoop(savedSrc, loopBtn));
+          controls.appendChild(loopBtn);
+
+          const downloadLink = document.createElement('a');
+          downloadLink.className = 'icon-btn';
+          downloadLink.title = '다운로드';
+          downloadLink.href = savedSrc;
+          downloadLink.download = `${(it.date || 'saved')}-${sentenceKey(it.en).slice(0, 20)}.mp3`;
+          downloadLink.textContent = '⬇';
+          controls.appendChild(downloadLink);
+
+          row.appendChild(controls);
+        }
+
         const removeBtn = document.createElement('button');
         removeBtn.className = 'list-item-remove';
         removeBtn.textContent = '✕';
@@ -492,7 +522,7 @@
 
     function stopSentenceAudio() {
       if (sentenceAudio) sentenceAudio.pause();
-      paragraphContent.querySelectorAll('.icon-btn.playing, .icon-btn.active')
+      document.querySelectorAll('.icon-btn.playing, .icon-btn.active')
         .forEach((b) => b.classList.remove('playing', 'active'));
       activeLoopBtn = null;
     }
