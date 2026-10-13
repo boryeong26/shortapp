@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { callClaude } = require('../lib/recommendCommentary');
-const { generateDailyParagraph } = require('../lib/dailyParagraph');
+const { generateDailyParagraph, DAILY_CHAR_BUDGET } = require('../lib/dailyParagraph');
 const { synthesizeSpeech } = require('../lib/tts');
 
 const PARAGRAPH_JSON_PATH = path.join(__dirname, '..', 'data', 'daily-paragraph.json');
@@ -80,7 +80,8 @@ async function main() {
 
   console.log('오늘의 영어 단락 생성 중...');
   const paragraph = await generateDailyParagraph(topic, anthropicApiKey);
-  console.log(`  -> "${paragraph.title}" (${paragraph.sentences.length}문장)`);
+  const charsUsed = paragraph.sentences.reduce((sum, s) => sum + s.en.length, 0);
+  console.log(`  -> "${paragraph.title}" (${paragraph.sentences.length}문장, TTS 문자수 ${charsUsed}/${DAILY_CHAR_BUDGET}자 일일 할당량)`);
 
   fs.rmSync(PARAGRAPH_DIR, { recursive: true, force: true });
   fs.mkdirSync(PARAGRAPH_DIR, { recursive: true });
