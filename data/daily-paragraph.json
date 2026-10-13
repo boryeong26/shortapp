@@ -1,8 +1,49 @@
 {
-  "date": null,
-  "generatedAt": null,
-  "topic": null,
-  "title": null,
-  "sentences": [],
-  "audio": null
+  "date": "2026-10-13",
+  "generatedAt": "2026-10-13T04:22:05.958Z",
+  "topic": "전화 통화 기초 표현",
+  "title": "전화 통화 기초 표현",
+  "sentences": [
+    {
+      "en": "Hello, this is Sarah speaking.",
+      "ko": "여보세요, 저는 사라입니다."
+    },
+    {
+      "en": "Hi, may I speak to Mr. Kim, please?",
+      "ko": "안녕하세요, 김 선생님과 통화할 수 있을까요?"
+    },
+    {
+      "en": "Sure, may I ask who's calling?",
+      "ko": "네, 누구시라고 전해드릴까요?"
+    },
+    {
+      "en": "This is John from the marketing team.",
+      "ko": "저는 마케팅팀의 존입니다."
+    },
+    {
+      "en": "Hold on a second, please.",
+      "ko": "잠시만 기다려 주세요."
+    },
+    {
+      "en": "I'm sorry, he's not available right now.",
+      "ko": "죄송하지만, 지금 그분이 자리에 안 계세요."
+    },
+    {
+      "en": "Can I leave a message?",
+      "ko": "메시지를 남길 수 있을까요?"
+    },
+    {
+      "en": "Of course, go ahead.",
+      "ko": "물론이죠, 말씀하세요."
+    },
+    {
+      "en": "Please tell him to call me back later.",
+      "ko": "나중에 저에게 다시 전화해 달라고 전해주세요."
+    },
+    {
+      "en": "No problem, I'll pass along the message.",
+      "ko": "알겠습니다, 메시지 꼭 전달해 드릴게요."
+    }
+  ],
+  "audio": "daily-paragraph.mp3"
 }
