@@ -1,18 +1,19 @@
-// POST /api/save-recommendations
-// Body: { topic, items }
-// items: [{ videoId, title, channelTitle, thumbnail, durationSeconds, url, comment }]
+// POST /api/save-sentences
+// Body: { items }
+// items: [{ en, ko, audio, topic, date }]
 //
-// Persists the user's saved/curated video list to data/recommendations.json
-// in the repo via the GitHub Contents API, so it survives a page refresh
-// and is visible to anyone viewing the published site. Requires
-// GITHUB_DISPATCH_TOKEN to have Contents: Read and write on the repo.
+// Persists the user's saved "good sentences" list (picked from the daily
+// paragraph) to data/saved-sentences.json in the repo via the GitHub
+// Contents API, so it survives a page refresh and is visible to anyone
+// viewing the published site. Requires GITHUB_DISPATCH_TOKEN to have
+// Contents: Read and write on the repo.
 //
 // No login/auth gate: anyone who can load the page can overwrite the
 // saved list. Fine for personal/low-traffic use.
 
 const { applyCors } = require('../lib/cors');
 
-const FILE_PATH = 'data/recommendations.json';
+const FILE_PATH = 'data/saved-sentences.json';
 
 module.exports = async (req, res) => {
   if (applyCors(req, res)) return;
@@ -44,18 +45,15 @@ module.exports = async (req, res) => {
   }
 
   const cleanedItems = items.map((item) => ({
-    videoId: String(item.videoId || ''),
-    title: String(item.title || '').slice(0, 200),
-    channelTitle: String(item.channelTitle || '').slice(0, 100),
-    thumbnail: String(item.thumbnail || '').slice(0, 300),
-    durationSeconds: Number(item.durationSeconds) || null,
-    url: String(item.url || (item.videoId ? `https://www.youtube.com/watch?v=${item.videoId}` : '')).slice(0, 200),
-    comment: item.comment ? String(item.comment).slice(0, 500) : null
-  })).filter((item) => item.videoId);
+    en: String(item.en || '').slice(0, 500),
+    ko: String(item.ko || '').slice(0, 500),
+    audio: item.audio ? String(item.audio).slice(0, 300) : null,
+    topic: item.topic ? String(item.topic).slice(0, 100) : null,
+    date: item.date ? String(item.date).slice(0, 20) : null
+  })).filter((item) => item.en);
 
   const updated = {
     updatedAt: new Date().toISOString(),
-    topic: body.topic ? String(body.topic).slice(0, 100) : null,
     items: cleanedItems
   };
 
@@ -83,7 +81,7 @@ module.exports = async (req, res) => {
       method: 'PUT',
       headers: { ...githubHeaders, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: 'chore: 추천 리스트 저장',
+        message: 'chore: 저장된 문장 리스트 업데이트',
         content: contentBase64,
         sha,
         branch: ref
@@ -92,14 +90,14 @@ module.exports = async (req, res) => {
 
     if (!putRes.ok) {
       const errText = await putRes.text();
-      console.error('save-recommendations commit error:', putRes.status, errText);
+      console.error('save-sentences commit error:', putRes.status, errText);
       res.status(502).json({ error: 'GitHub에 저장하지 못했습니다. GITHUB_DISPATCH_TOKEN에 Contents 쓰기 권한이 있는지 확인하세요.' });
       return;
     }
 
     res.status(200).json({ ok: true });
   } catch (err) {
-    console.error('save-recommendations error:', err);
-    res.status(500).json({ error: '리스트 저장 중 오류가 발생했습니다.' });
+    console.error('save-sentences error:', err);
+    res.status(500).json({ error: '문장 저장 중 오류가 발생했습니다.' });
   }
 };
