@@ -207,6 +207,52 @@
 
   .sentence-text { flex: 1; min-width: 0; }
 
+  .dictation-input {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--panel-border);
+    background: #0a0d1a;
+    color: var(--text);
+    font-size: 13.5px;
+    line-height: 1.5;
+    outline: none;
+    resize: vertical;
+    min-height: 38px;
+    font-family: inherit;
+    transition: border-color 0.15s ease;
+  }
+
+  .dictation-input:focus { border-color: var(--accent); }
+
+  .reveal-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .reveal-btn {
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--panel-border);
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 11px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  }
+
+  .reveal-btn:hover { border-color: var(--accent); color: var(--text); }
+
+  .reveal-btn.active {
+    border-color: var(--accent-2);
+    color: var(--accent-2);
+    background: rgba(51,226,199,0.08);
+  }
+
+  .reveal-answer { display: none; margin-top: 6px; }
+  .reveal-answer.shown { display: block; }
+
   .sentence-row-inner {
     display: flex;
     align-items: flex-start;
@@ -339,8 +385,8 @@
 
   <main>
     <div class="hero">
-      <h1>매일 아침 새로운<br>영어회화 한 단락</h1>
-      <p>매일 오전 7시, 기초 영어회화 한 단락(약 10문장)이 한국어 번역과 음성(TTS)으로 자동 생성됩니다. 마음에 드는 문장은 리스트에 저장해두세요.</p>
+      <h1>매일 아침 새로운<br>영어회화 받아쓰기</h1>
+      <p>매일 오전 7시, 기초 영어회화 한 단락(약 10문장)이 음성(TTS)으로 자동 생성됩니다. 문장을 듣고 직접 받아써본 뒤, "정답 보기"/"한글 뜻 보기"로 확인하세요. 마음에 드는 문장은 리스트에 저장해두세요.</p>
     </div>
 
     <div class="card" id="paragraphCard">
@@ -623,13 +669,54 @@
 
           const textWrap = document.createElement('div');
           textWrap.className = 'sentence-text';
+
+          const input = document.createElement('textarea');
+          input.className = 'dictation-input';
+          input.rows = 1;
+          input.placeholder = '들리는 대로 받아써보세요';
+          const storageKey = `dictation:${data.date || 'daily'}:${i}`;
+          try {
+            const savedDraft = localStorage.getItem(storageKey);
+            if (savedDraft) input.value = savedDraft;
+          } catch (e) { /* localStorage unavailable (private mode, etc.) — ignore */ }
+          input.addEventListener('input', () => {
+            try { localStorage.setItem(storageKey, input.value); } catch (e) { /* ignore */ }
+          });
+          textWrap.appendChild(input);
+
+          const revealRow = document.createElement('div');
+          revealRow.className = 'reveal-row';
+
           const en = document.createElement('div');
-          en.className = 'sentence-en';
+          en.className = 'sentence-en reveal-answer';
           en.textContent = s.en;
-          textWrap.appendChild(en);
+
           const ko = document.createElement('div');
-          ko.className = 'sentence-ko';
+          ko.className = 'sentence-ko reveal-answer';
           ko.textContent = s.ko;
+
+          const enBtn = document.createElement('button');
+          enBtn.className = 'reveal-btn';
+          enBtn.textContent = '정답 보기';
+          enBtn.addEventListener('click', () => {
+            const shown = en.classList.toggle('shown');
+            enBtn.classList.toggle('active', shown);
+            enBtn.textContent = shown ? '정답 숨기기' : '정답 보기';
+          });
+          revealRow.appendChild(enBtn);
+
+          const koBtn = document.createElement('button');
+          koBtn.className = 'reveal-btn';
+          koBtn.textContent = '한글 뜻 보기';
+          koBtn.addEventListener('click', () => {
+            const shown = ko.classList.toggle('shown');
+            koBtn.classList.toggle('active', shown);
+            koBtn.textContent = shown ? '한글 뜻 숨기기' : '한글 뜻 보기';
+          });
+          revealRow.appendChild(koBtn);
+
+          textWrap.appendChild(revealRow);
+          textWrap.appendChild(en);
           textWrap.appendChild(ko);
           inner.appendChild(textWrap);
 
