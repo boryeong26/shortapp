@@ -385,8 +385,8 @@
 
   <main>
     <div class="hero">
-      <h1>매일 아침 새로운<br>영어회화 받아쓰기</h1>
-      <p>매일 오전 7시, 기초 영어회화 한 단락(약 10문장)이 음성(TTS)으로 자동 생성됩니다. 문장을 듣고 직접 받아써본 뒤, "정답 보기"/"한글 뜻 보기"로 확인하세요. 마음에 드는 문장은 리스트에 저장해두세요.</p>
+      <h1>원할 때 만드는<br>영어회화 받아쓰기</h1>
+      <p>버튼을 누르면 기초 영어회화 한 단락(약 10문장)이 음성(TTS)으로 새로 생성됩니다 (하루 1번만). 문장을 듣고 직접 받아써본 뒤, "정답 보기"/"한글 뜻 보기"로 확인하세요. 마음에 드는 문장은 리스트에 저장해두세요.</p>
     </div>
 
     <div class="card" id="paragraphCard">
@@ -397,6 +397,8 @@
           <p class="card-subtitle" id="paragraphMeta">불러오는 중...</p>
         </div>
       </div>
+      <button class="action-btn" id="generateBtn">✨ 오늘의 단락 새로 만들기</button>
+      <div class="status-line" id="generateStatus"></div>
       <div class="error-box" id="paragraphErrorBox"></div>
       <div id="paragraphContent"></div>
     </div>
@@ -560,6 +562,59 @@
     const paragraphMeta = document.getElementById('paragraphMeta');
     const paragraphErrorBox = document.getElementById('paragraphErrorBox');
     const paragraphContent = document.getElementById('paragraphContent');
+    const generateBtn = document.getElementById('generateBtn');
+    const generateStatus = document.getElementById('generateStatus');
+
+    let latestParagraphDate = null;
+    let pollTimer = null;
+
+    function todayStr() {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function updateGenerateButtonState() {
+      if (latestParagraphDate === todayStr()) {
+        generateBtn.disabled = true;
+        generateBtn.textContent = '✓ 오늘은 이미 생성했습니다';
+      } else {
+        generateBtn.disabled = false;
+        generateBtn.textContent = '✨ 오늘의 단락 새로 만들기';
+      }
+    }
+
+    async function generateParagraph() {
+      generateBtn.disabled = true;
+      generateStatus.textContent = '생성 요청 중...';
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/generate-paragraph`, { method: 'POST' });
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || '생성 요청에 실패했습니다.');
+        }
+
+        generateStatus.textContent = '생성 중입니다... 보통 1~2분 걸려요. (자동으로 새로고침됩니다)';
+        if (pollTimer) clearInterval(pollTimer);
+        let attempts = 0;
+        pollTimer = setInterval(async () => {
+          attempts += 1;
+          await loadDailyParagraph();
+          if (latestParagraphDate === todayStr() || attempts >= 18) {
+            clearInterval(pollTimer);
+            pollTimer = null;
+            generateStatus.textContent = latestParagraphDate === todayStr()
+              ? '새 단락이 생성되었습니다!'
+              : '아직 생성 중일 수 있어요. 잠시 후 새로고침 해보세요.';
+          }
+        }, 10000);
+      } catch (err) {
+        generateStatus.textContent = `생성 실패: ${err.message}`;
+        updateGenerateButtonState();
+      }
+    }
+
+    generateBtn.addEventListener('click', generateParagraph);
 
     // Shared playback state so clicking a new sentence's play/loop button
     // stops whatever was previously playing instead of overlapping audio.
@@ -626,10 +681,15 @@
         const data = await res.json();
 
         if (!data.title || !Array.isArray(data.sentences) || data.sentences.length === 0) {
-          paragraphMeta.textContent = '아직 생성된 오늘의 단락이 없습니다. (매일 오전 7시 자동 생성)';
+          paragraphMeta.textContent = '아직 생성된 단락이 없습니다. 위 버튼을 눌러 만들어보세요.';
           paragraphContent.innerHTML = '';
+          latestParagraphDate = null;
+          updateGenerateButtonState();
           return;
         }
+
+        latestParagraphDate = data.date || null;
+        updateGenerateButtonState();
 
         paragraphMeta.textContent = `${data.date || ''} · ${data.topic || ''}`;
         paragraphContent.innerHTML = '';
