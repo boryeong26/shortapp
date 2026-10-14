@@ -1,57 +1,57 @@
 {
-  "date": "2026-10-13",
-  "generatedAt": "2026-10-13T04:55:40.950Z",
-  "topic": "식당에서 계산하기",
-  "title": "식당에서 계산하기",
+  "date": "2026-10-14",
+  "generatedAt": "2026-10-14T12:51:17.080Z",
+  "topic": "상점에서 물건 교환/환불하기",
+  "title": "상점에서 교환/환불하기",
   "sentences": [
     {
-      "en": "Excuse me, can I get the check, please?",
-      "ko": "저기요, 계산서 좀 가져다주시겠어요?",
+      "en": "Hi, I'd like to return this shirt.",
+      "ko": "안녕하세요, 이 셔츠를 환불하고 싶어요.",
       "audio": "daily-paragraph/01.mp3"
     },
     {
-      "en": "Sure, I'll bring it right away.",
-      "ko": "네, 바로 가져다 드릴게요.",
+      "en": "Is there a problem with it?",
+      "ko": "제품에 무슨 문제가 있나요?",
       "audio": "daily-paragraph/02.mp3"
     },
     {
-      "en": "Here's your bill. Take your time.",
-      "ko": "여기 계산서입니다. 천천히 보세요.",
+      "en": "It doesn't fit me well.",
+      "ko": "저한테 잘 안 맞아요.",
       "audio": "daily-paragraph/03.mp3"
     },
     {
-      "en": "Do you accept credit cards?",
-      "ko": "신용카드 받나요?",
+      "en": "Do you have the receipt?",
+      "ko": "영수증 가지고 계신가요?",
       "audio": "daily-paragraph/04.mp3"
     },
     {
-      "en": "Yes, we accept all major cards.",
-      "ko": "네, 주요 카드는 다 받습니다.",
+      "en": "Yes, here it is.",
+      "ko": "네, 여기 있어요.",
       "audio": "daily-paragraph/05.mp3"
     },
     {
-      "en": "Let's split the bill, shall we?",
-      "ko": "우리 더치페이할까요?",
+      "en": "Would you like a refund or exchange?",
+      "ko": "환불을 원하세요, 교환을 원하세요?",
       "audio": "daily-paragraph/06.mp3"
     },
     {
-      "en": "Sounds good. It's about fifteen dollars each.",
-      "ko": "좋아요. 한 명당 약 15달러네요.",
+      "en": "I'd prefer an exchange, please.",
+      "ko": "교환으로 해주시면 좋겠어요.",
       "audio": "daily-paragraph/07.mp3"
     },
     {
-      "en": "Should we leave a tip?",
-      "ko": "팁을 줘야 할까요?",
+      "en": "What size do you need?",
+      "ko": "어떤 사이즈가 필요하세요?",
       "audio": "daily-paragraph/08.mp3"
     },
     {
-      "en": "Yes, let's leave twenty percent.",
-      "ko": "네, 20퍼센트 정도 남기죠.",
+      "en": "I need a medium, please.",
+      "ko": "미디엄 사이즈로 부탁드려요.",
       "audio": "daily-paragraph/09.mp3"
     },
     {
-      "en": "Thank you, have a great day!",
-      "ko": "감사합니다, 좋은 하루 보내세요!",
+      "en": "Here you go, all set!",
+      "ko": "여기 있습니다, 다 됐어요!",
       "audio": "daily-paragraph/10.mp3"
     }
   ],
