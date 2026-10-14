@@ -237,6 +237,7 @@
     font-size: 11px;
     font-weight: 700;
     cursor: pointer;
+    white-space: nowrap;
   }
 
   .check-btn:hover { background: rgba(124,92,255,0.2); }
@@ -264,6 +265,7 @@
     color: var(--text-dim);
     font-size: 11px;
     cursor: pointer;
+    white-space: nowrap;
     transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
   }
 
@@ -282,6 +284,17 @@
     display: flex;
     align-items: flex-start;
     gap: 10px;
+  }
+
+  @media (max-width: 480px) {
+    .sentence-row-inner {
+      flex-direction: column;
+    }
+
+    .sentence-controls {
+      width: 100%;
+      justify-content: flex-start;
+    }
   }
 
   .sentence-en {
@@ -813,27 +826,25 @@
 
           const checkBtn = document.createElement('button');
           checkBtn.className = 'check-btn';
-          checkBtn.textContent = '✅ 채점하기';
+          checkBtn.textContent = '✅ 채점';
           checkBtn.addEventListener('click', checkAnswer);
           revealRow.appendChild(checkBtn);
 
           const enBtn = document.createElement('button');
           enBtn.className = 'reveal-btn';
-          enBtn.textContent = '정답 보기';
+          enBtn.textContent = '정답';
           enBtn.addEventListener('click', () => {
             const shown = en.classList.toggle('shown');
             enBtn.classList.toggle('active', shown);
-            enBtn.textContent = shown ? '정답 숨기기' : '정답 보기';
           });
           revealRow.appendChild(enBtn);
 
           const koBtn = document.createElement('button');
           koBtn.className = 'reveal-btn';
-          koBtn.textContent = '한글 뜻 보기';
+          koBtn.textContent = '한글 뜻';
           koBtn.addEventListener('click', () => {
             const shown = ko.classList.toggle('shown');
             koBtn.classList.toggle('active', shown);
-            koBtn.textContent = shown ? '한글 뜻 숨기기' : '한글 뜻 보기';
           });
           revealRow.appendChild(koBtn);
 
