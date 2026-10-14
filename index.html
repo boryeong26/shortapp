@@ -225,6 +225,31 @@
 
   .dictation-input:focus { border-color: var(--accent); }
 
+  .dictation-input.correct { border-color: var(--accent-2); }
+  .dictation-input.incorrect { border-color: var(--danger); }
+
+  .check-btn {
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--accent);
+    background: rgba(124,92,255,0.12);
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .check-btn:hover { background: rgba(124,92,255,0.2); }
+
+  .check-feedback {
+    font-size: 12px;
+    margin-top: 6px;
+    display: none;
+  }
+
+  .check-feedback.correct { display: block; color: var(--accent-2); }
+  .check-feedback.incorrect { display: block; color: var(--danger); }
+
   .reveal-row {
     display: flex;
     gap: 6px;
@@ -733,16 +758,29 @@
           const input = document.createElement('textarea');
           input.className = 'dictation-input';
           input.rows = 1;
-          input.placeholder = '들리는 대로 받아써보세요';
+          input.placeholder = '들리는 대로 받아써보세요 (Enter로 채점)';
           const storageKey = `dictation:${data.date || 'daily'}:${i}`;
           try {
             const savedDraft = localStorage.getItem(storageKey);
             if (savedDraft) input.value = savedDraft;
           } catch (e) { /* localStorage unavailable (private mode, etc.) — ignore */ }
+
+          const checkFeedback = document.createElement('div');
+          checkFeedback.className = 'check-feedback';
+
           input.addEventListener('input', () => {
             try { localStorage.setItem(storageKey, input.value); } catch (e) { /* ignore */ }
+            input.classList.remove('correct', 'incorrect');
+            checkFeedback.className = 'check-feedback';
+          });
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              checkAnswer();
+            }
           });
           textWrap.appendChild(input);
+          textWrap.appendChild(checkFeedback);
 
           const revealRow = document.createElement('div');
           revealRow.className = 'reveal-row';
@@ -754,6 +792,30 @@
           const ko = document.createElement('div');
           ko.className = 'sentence-ko reveal-answer';
           ko.textContent = s.ko;
+
+          // Loose match: ignores case, punctuation and extra whitespace so
+          // "Hello, world!" and "hello world" are treated as the same answer.
+          function normalizeSentence(text) {
+            return text
+              .toLowerCase()
+              .replace(/[.,!?;:"'’]/g, '')
+              .trim()
+              .replace(/\s+/g, ' ');
+          }
+
+          function checkAnswer() {
+            const isCorrect = normalizeSentence(input.value) === normalizeSentence(s.en) && input.value.trim() !== '';
+            input.classList.toggle('correct', isCorrect);
+            input.classList.toggle('incorrect', !isCorrect);
+            checkFeedback.className = 'check-feedback ' + (isCorrect ? 'correct' : 'incorrect');
+            checkFeedback.textContent = isCorrect ? '✅ 정답입니다!' : '❌ 다시 확인해보세요.';
+          }
+
+          const checkBtn = document.createElement('button');
+          checkBtn.className = 'check-btn';
+          checkBtn.textContent = '✅ 채점하기';
+          checkBtn.addEventListener('click', checkAnswer);
+          revealRow.appendChild(checkBtn);
 
           const enBtn = document.createElement('button');
           enBtn.className = 'reveal-btn';
