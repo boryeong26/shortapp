@@ -73,6 +73,26 @@
     letter-spacing: 0.08em;
   }
 
+  .credit-badge-row {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 18px;
+  }
+
+  .credit-badge {
+    font-size: 11.5px;
+    color: var(--text-dim);
+    border: 1px solid var(--panel-border);
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: #0a0d1a;
+  }
+
+  .credit-badge.low {
+    color: var(--danger);
+    border-color: rgba(255,92,122,0.4);
+  }
+
   main {
     max-width: 760px;
     margin: 0 auto;
@@ -422,6 +442,10 @@
   </header>
 
   <main>
+    <div class="credit-badge-row">
+      <div class="credit-badge" id="creditBadge" style="display: none;"></div>
+    </div>
+
     <div class="hero">
       <h1>원할 때 만드는<br>영어회화 받아쓰기</h1>
       <p>버튼을 누르면 기초 영어회화 한 단락(약 10문장)이 음성(TTS)으로 새로 생성됩니다 (하루 1번만). 문장을 듣고 직접 받아써본 뒤, "정답 보기"/"한글 뜻 보기"로 확인하세요. 마음에 드는 문장은 리스트에 저장해두세요.</p>
@@ -900,9 +924,33 @@
       }
     }
 
+    const creditBadge = document.getElementById('creditBadge');
+
+    async function loadCreditUsage() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/usage`, { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok || !data.elevenlabs) return; // optional feature — fail silently if not configured
+
+        const { used, limit, remaining, resetAt } = data.elevenlabs;
+        if (!limit) return;
+
+        const resetText = resetAt
+          ? new Date(resetAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })
+          : null;
+        creditBadge.textContent = `🔊 TTS 크레딧 ${used.toLocaleString()} / ${limit.toLocaleString()}` +
+          (resetText ? ` · ${resetText} 리셋` : '');
+        creditBadge.classList.toggle('low', remaining !== null && remaining < limit * 0.1);
+        creditBadge.style.display = 'inline-block';
+      } catch (e) {
+        // optional feature — ignore network errors and just hide the badge
+      }
+    }
+
     async function init() {
       await loadSavedList();
       await loadDailyParagraph();
+      loadCreditUsage();
     }
 
     init();
